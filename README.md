@@ -13,7 +13,7 @@
 Install q-radix: `go get github.com/ihexxa/q-radix`
 
 
-### crud with q-radix
+### Usages
 ```go
 // import q-radix
 import qradix "github.com/ihexxa/q-radix" 
