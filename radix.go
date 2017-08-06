@@ -39,7 +39,6 @@ func commonPrefixID(s1 string, s2 string) int {
 
 // NewRTree returns a new radix tree
 func NewRTree() *RTree {
-	//return &RTree{Root: &node{}}
 	return &RTree{Root: &node{}}
 }
 
@@ -47,7 +46,11 @@ func NewRTree() *RTree {
 // if no match is found, it returns (nil, false) instead
 func (T *RTree) Get(path string) (interface{}, bool) {
 	if len(path) == 0 {
-		return nil, false
+		if T.Root.Leaf != nil {
+			return T.Root.Leaf.Val, true
+		} else {
+			return nil, false
+		}
 	}
 
 	n := T.Root
@@ -91,8 +94,11 @@ func split(n *node, id int) (*node, bool) {
 // Insert adds value on the leaf of path
 // if path already exists, it will update the value and returns former value.
 func (T *RTree) Insert(path string, val interface{}) (interface{}, bool) {
-	if len(path) == 0 || T.Root == nil {
+	if T.Root == nil {
 		return nil, false
+	}
+	if len(path) == 0 {
+		return T.updateLeafVal(T.Root, "", val)
 	}
 
 	n := T.Root
@@ -109,7 +115,6 @@ func (T *RTree) Insert(path string, val interface{}) (interface{}, bool) {
 			return nil, true
 		} else if id < len(n.Prefix)-1 {
 			childNode, ok := split(n, id+1)
-			// TODO seems should be deleted
 			if !ok {
 				return nil, false
 			}
@@ -172,8 +177,13 @@ func merge(parent *node, child *node) bool {
 // if the leaf node doesn't exist, it will return false
 func (T *RTree) Remove(path string) bool {
 	if len(path) == 0 {
+		if T.Root.Leaf != nil {
+			T.Root.Leaf = nil
+			return true
+		}
 		return false
 	}
+
 	parent := T.Root
 	child := T.Root
 	for {
