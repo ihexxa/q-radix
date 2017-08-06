@@ -1,30 +1,39 @@
-# qradix.go
+# q-radix
 
 *A simple radix tree implementation in Go.*
 
 ### Features
+"q" is a vision, which stands for good quality, quick and cute. 
 
-- Simple API, start quickly
-- Fully tested
+- well tested (random tested, unit tested)
+- good performance, check [go radix benchmark (unfinished)](to-be-added)
+- simple API
 
-### Quick Start
+### Install
+Install q-radix: `go get github.com/ihexxa/q-radix`
 
+
+### crud with q-radix
 ```go
-	// create a radix tree
-	rTree := qradix.NewRTree()
+// import q-radix
+import qradix "github.com/ihexxa/q-radix" 
 
-	// insert value in any type with a string key
-	ok := rTree.Insert("key", value)
+// create a radix tree
+rTree := qradix.NewRTree()
 
-	// get the value of key 
-	val, ok := rTree.Get("key")
+// insert value in any type with a string key
+ok := rTree.Insert("key", value)
 
-	// override the value of key
-	rTree.Insert("key", newValue)
+// get the value of key
+// old value will be returned if key has already existed in radix tree
+val, ok := rTree.Get("key")
 
-	// remove the value of key
-	ok := rTree.Remove("key")
+// override the value of key
+rTree.Insert("key", newValue)
 
-	// get the size of radix tree
-	treeSize := rTree.Size
+// remove the value of key
+ok := rTree.Remove("key")
+
+// get the size of radix tree
+treeSize := rTree.Size
 ```
