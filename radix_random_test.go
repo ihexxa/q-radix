@@ -9,12 +9,12 @@ import (
 )
 
 const logOff bool = true   // is log off
-const runTestCount int = 5 // how many times will random test run
+const runTestCount int = 1 // how many times will random test run
 const maxLen int = 5       // max length of random string
-const treeWidth int = 2    // how many random suffix will be append after node's string
-const treeDepth int = 10   // how many times will random suffix be append to root node's string
+const treeWidth int = 3    // how many random suffix will be append after node's string
+const treeDepth int = 3    // how many times will random suffix be append to root node's string
 const insertRatio = 60     // control the the ratio between insert action and remove action
-const actionCount = 500    // how many actions will be applied on RTree and map
+const actionCount = 10     // how many actions will be applied on RTree and map
 const insertAction = "insert"
 const removeAction = "remove"
 
@@ -40,7 +40,7 @@ func randomTest(t *testing.T) {
 	var actions []string
 	tree := NewRTree()
 	dict := make(map[string]string)
-	randomStrings := getTestStrings()
+	randomStrings := GetTestStrings()
 
 	for i := 0; i < actionCount; i++ {
 		key := randomStrings[rand.Intn(len(randomStrings))]
@@ -55,11 +55,11 @@ func randomTest(t *testing.T) {
 	}
 }
 
-func getTestStrings() []string {
+func GetTestStrings() []string {
 	var str []rune
 	var randomStrings []string
 
-	getRandomKeys(&str, treeWidth, treeDepth, &randomStrings)
+	GetRandomKeys(&str, treeWidth, treeDepth, &randomStrings)
 	print("\n\nrandom strings")
 	for _, str := range randomStrings {
 		print(str)
@@ -68,8 +68,8 @@ func getTestStrings() []string {
 	return randomStrings
 }
 
-// getRandomKeys returns random strings in backtrack way
-func getRandomKeys(str *[]rune, depth int, width int, randomStrings *[]string) {
+// GetRandomKeys returns random strings in backtrack way
+func GetRandomKeys(str *[]rune, depth int, width int, randomStrings *[]string) {
 	if depth == 0 {
 		return
 	}
@@ -77,16 +77,16 @@ func getRandomKeys(str *[]rune, depth int, width int, randomStrings *[]string) {
 	length := len(*str) // backup length for restoring
 	for i := 0; i < width; i++ {
 		// append random string
-		appendRandomString(str)
+		AppendRandomString(str)
 		*randomStrings = append(*randomStrings, string(*str))
-		getRandomKeys(str, depth-1, width, randomStrings)
+		GetRandomKeys(str, depth-1, width, randomStrings)
 		// restore length
 		*str = (*str)[0:length]
 	}
 }
 
-// appendRandomString appends at most maxLen runes on the end of str
-func appendRandomString(str *[]rune) {
+// AppendRandomString appends at most maxLen runes on the end of str
+func AppendRandomString(str *[]rune) {
 	charNum := 26
 
 	// generate random string
