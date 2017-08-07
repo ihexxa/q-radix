@@ -6,7 +6,7 @@
 "q" is a vision, which stands for good quality, quick and cute. 
 
 - well tested (random tested, unit tested)
-- good performance, check [go radix benchmark](https://github.com/ihexxa/radix-bench)
+- good performance
 - simple API
 
 ### Install
