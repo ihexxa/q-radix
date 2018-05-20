@@ -1,22 +1,26 @@
 # q-radix
 
-*A simple radix tree implementation in Go.*
+_A simple radix tree implementation in Go._
+
+[![Build Status](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](https://travis-ci.org/ihexxa/q-radix)
 
 ### Features
-"q" is a vision, which stands for good quality, quick and cute. 
 
-- well tested (random tested, unit tested)
-- good performance
-- simple API
+"q" is a vision, which stands for good quality, quick and cute.
+
+* well tested (random tested, unit tested)
+* good performance
+* simple API
 
 ### Install
+
 Install q-radix: `go get github.com/ihexxa/q-radix`
 
-
 ### Usages
+
 ```go
 // import q-radix
-import qradix "github.com/ihexxa/q-radix" 
+import qradix "github.com/ihexxa/q-radix"
 
 // create a radix tree
 rTree := qradix.NewRTree()
