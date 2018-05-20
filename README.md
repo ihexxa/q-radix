@@ -2,7 +2,7 @@
 
 _A simple radix tree implementation in Go._
 
-[![Build Status](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](https://travis-ci.org/ihexxa/q-radix)
+<img src="https://travis-ci.org/ihexxa/q-radix.svg?branch=master" />
 
 ### Features
 
