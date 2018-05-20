@@ -2,7 +2,8 @@
 
 _A simple radix tree implementation in Go._
 
-<img src="https://travis-ci.org/ihexxa/q-radix.svg?branch=master" />
+[![](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](build)
+[![](https://goreportcard.com/badge/github.com/ihexxa/q-radix)](goreport)
 
 ### Features
 
