@@ -1,39 +1,43 @@
 package qradix
 
 import (
-	"bytes"
+	"flag"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 )
 
-const logOff bool = true   // is log off
-const runTestCount int = 1 // how many times will random test run
-const maxLen int = 5       // max length of random string
-const treeWidth int = 3    // how many random suffix will be append after node's string
-const treeDepth int = 3    // how many times will random suffix be append to root node's string
-const insertRatio = 60     // control the the ratio between insert action and remove action
-const actionCount = 10     // how many actions will be applied on RTree and map
-const insertAction = "insert"
-const removeAction = "remove"
+const (
+	insertAction = "insert"
+	removeAction = "remove"
+)
 
-var seed int64 // seed can be set to some value to re-produce test failure
+var (
+	// use -args to input these options: "go test -args -d=true"
+	actionCount = flag.Int("c", 10, "how many actions will be applied on RTree and map")
+	insertRatio = flag.Int("i", 60, "control the the ratio between insert action and remove action")
+	maxLen      = flag.Int("l", 5, "how long will random string be generated")
+	seed        = flag.Int64("s", 10, "seed can be set to specific value to re-produce test failure")
+	testRound   = flag.Int("r", 1, "how many times will random test run")
+	treeHeight  = flag.Int("h", 3, "how many times will random suffix be append to root node's string")
+	treeWidth   = flag.Int("w", 3, "how many random suffix will be append after node's string")
+)
 
-// TestWithRandomKeys starts a random test by comparing RTree and map
+// TestWithRandomKeys starts a random test by comparing a RTree and a map
 func TestWithRandomKeys(t *testing.T) {
 	seedRand()
-	for i := 0; i < runTestCount; i++ {
+	for i := 0; i < *testRound; i++ {
 		randomTest(t)
 	}
 }
 
 func seedRand() {
-	if seed == 0 {
-		seed = time.Now().UnixNano()
+	if *seed == 0 {
+		*seed = time.Now().UnixNano()
 	}
-	rand.Seed(seed)
-	print(fmt.Sprintf("seed=%d", seed))
+	rand.Seed(*seed)
+	fmt.Printf("seed=%d\n", *seed)
 }
 
 func randomTest(t *testing.T) {
@@ -42,7 +46,7 @@ func randomTest(t *testing.T) {
 	dict := make(map[string]string)
 	randomStrings := GetTestStrings()
 
-	for i := 0; i < actionCount; i++ {
+	for i := 0; i < *actionCount; i++ {
 		key := randomStrings[rand.Intn(len(randomStrings))]
 
 		doRandomAction(&actions, key, tree, dict)
@@ -59,7 +63,7 @@ func GetTestStrings() []string {
 	var str []rune
 	var randomStrings []string
 
-	GetRandomKeys(&str, treeWidth, treeDepth, &randomStrings)
+	GetRandomKeys(&str, *treeWidth, *treeHeight, &randomStrings)
 	print("\n\nrandom strings")
 	for _, str := range randomStrings {
 		print(str)
@@ -85,12 +89,12 @@ func GetRandomKeys(str *[]rune, depth int, width int, randomStrings *[]string) {
 	}
 }
 
-// AppendRandomString appends at most maxLen runes on the end of str
+// AppendRandomString appends at most *maxLen runes on the end of str
 func AppendRandomString(str *[]rune) {
 	charNum := 26
 
 	// generate random string
-	length := rand.Intn(maxLen)
+	length := rand.Intn(*maxLen)
 	for i := 0; i < length; i++ {
 		c := rune(int('a') + rand.Intn(charNum))
 		*str = append(*str, c)
@@ -100,7 +104,7 @@ func AppendRandomString(str *[]rune) {
 func doRandomAction(actions *[]string, key string, tree *RTree, dict map[string]string) {
 	r := rand.Intn(100)
 
-	if r < insertRatio {
+	if r < *insertRatio {
 		if tree != nil {
 			tree.Insert(key, key)
 		}
@@ -153,73 +157,8 @@ func preOrderAndCompare(n *node, M map[string]string) bool {
 	if !leaf || !child || !next {
 		print("false node")
 		printNode(n)
-		print(fmt.Sprintf("%s %s %s", leaf, child, next))
+		print(fmt.Sprintf("%t %t %t", leaf, child, next))
 	}
 
 	return leaf && child && next
-}
-
-// BFS is breadth first traverse on the radix tree
-func BFS(T *RTree, function func(*node)) {
-	Q := make([]*node, 0)
-	Q = append(Q, T.Root)
-
-	for len(Q) > 0 {
-		n := Q[0]
-		Q = Q[1:]
-
-		if n == nil {
-			continue
-		}
-		if n.Children != nil {
-			Q = append(Q, n.Children)
-		}
-		if n.Next != nil {
-			Q = append(Q, n.Next)
-		}
-		function(n)
-	}
-}
-
-func print(msg string) {
-	if !logOff {
-		fmt.Println(msg)
-	}
-}
-
-func printActions(actions []string) {
-	print("\n\naction list:")
-	for id, action := range actions {
-		print(fmt.Sprintf("action%d: %s", id, action))
-	}
-}
-
-func printRTree(T *RTree) {
-	print("\n\nrtree:")
-	BFS(T, printNode)
-}
-
-func printMap(M map[string]string) {
-	print("\n\nmap:")
-	for _, val := range M {
-		print(val)
-	}
-}
-
-// printNode prints all members of a node
-func printNode(n *node) {
-	var buf bytes.Buffer
-
-	buf.WriteString(fmt.Sprintf("[prefix: %s] ", n.Prefix))
-	if n.Children != nil {
-		buf.WriteString(fmt.Sprintf("[child: %s] ", n.Children.Prefix))
-	}
-	if n.Next != nil {
-		buf.WriteString(fmt.Sprintf("[next: %s] ", n.Next.Prefix))
-	}
-	if n.Leaf != nil {
-		buf.WriteString(fmt.Sprintf("[value(key): %s]", n.Leaf.Key))
-	}
-
-	print(buf.String())
 }

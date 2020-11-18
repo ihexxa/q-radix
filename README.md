@@ -1,44 +1,38 @@
 # q-radix
 
-_A simple radix tree implementation in Go._
+_A cute(Q) radix tree implementation in Go/Golang with good performance._
 
 [![](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](build)
 [![](https://goreportcard.com/badge/github.com/ihexxa/q-radix)](goreport)
 
 ### Features
 
-"q" is a vision, which stands for good quality, quick and cute.
-
-* well tested (random tested, unit tested)
 * good performance
-* simple API
+* more ways to query: GetAllMatches
+* simple interfaces
+* well tested (unit test and random test)
 
 ### Install
 
 Install q-radix: `go get github.com/ihexxa/q-radix`
 
-### Usages
+### Examples
 
 ```go
 // import q-radix
 import qradix "github.com/ihexxa/q-radix"
 
-// create a radix tree
-rTree := qradix.NewRTree()
 
-// insert value in any type with a string key
-ok := rTree.Insert("key", value)
+rTree := qradix.NewRTree() // create a new radix tree
+ok := rTree.Insert("key", value) // insert value in any type with a string key
+treeSize := rTree.Size // get the size of radix tree
 
-// get the value of key
-// old value will be returned if key has already existed in radix tree
-val, ok := rTree.Get("key")
+val, ok := rTree.Get("key") // get the value by key
+val, ok := rTree.GetAllMatches("key") // get all prefix matches of the key
 
-// override the value of key
-rTree.Insert("key", newValue)
+// override the value of the key if it exists in the radix tree
+// and the old value will be returned if it exists in the radix tree
+oldVal, ok := rTree.Insert("key", newValue)
+ok := rTree.Remove("key") // remove the value from the radix tree
 
-// remove the value of key
-ok := rTree.Remove("key")
-
-// get the size of radix tree
-treeSize := rTree.Size
 ```
