@@ -1,5 +1,6 @@
 package qradix
 
+// node is a node of radix tree and it is not a leaf
 type node struct {
 	Prefix   string
 	Children *node
@@ -7,6 +8,7 @@ type node struct {
 	Leaf     *leafNode
 }
 
+// leafNode stores all values
 type leafNode struct {
 	Key string
 	Val interface{}
@@ -27,7 +29,7 @@ type RTree struct {
 	Size int
 }
 
-func commonPrefixID(s1 string, s2 string) int {
+func commonPrefixOffset(s1 string, s2 string) int {
 	i := 0
 	for ; i < len(s1) && i < len(s2); i++ {
 		if s1[i] != s2[i] {
@@ -42,15 +44,14 @@ func NewRTree() *RTree {
 	return &RTree{Root: &node{}}
 }
 
-// Get returns a value according to path
+// Get returns a value according to key
 // if no match is found, it returns (nil, false) instead
-func (T *RTree) Get(path string) (interface{}, bool) {
-	if len(path) == 0 {
+func (T *RTree) Get(key string) (interface{}, bool) {
+	if len(key) == 0 {
 		if T.Root.Leaf != nil {
 			return T.Root.Leaf.Val, true
-		} else {
-			return nil, false
 		}
+		return nil, false
 	}
 
 	n := T.Root
@@ -59,90 +60,127 @@ func (T *RTree) Get(path string) (interface{}, bool) {
 			return nil, false
 		}
 
-		id := commonPrefixID(n.Prefix, path)
-		if id == -1 {
+		offset := commonPrefixOffset(n.Prefix, key)
+		if offset == -1 {
 			n = n.Next
 			continue
-		} else if id == len(n.Prefix)-1 && id < len(path)-1 {
-			path = path[id+1:]
+		} else if offset == len(n.Prefix)-1 && offset < len(key)-1 {
+			key = key[offset+1:]
 			n = n.Children
 			continue
-		} else if id == len(n.Prefix)-1 && id == len(path)-1 && n.Leaf != nil {
+		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
 			return n.Leaf.Val, true
 		}
 		return nil, false
 	}
 }
 
-// split splits node into two nodes
-// node1's prefix is [0, id)
-// node2's prefix is [id, len-1]
-func split(n *node, id int) (*node, bool) {
-	if n == nil || id <= 0 || id > len(n.Prefix)-1 {
+// GetAllMatches returns all the prefix matches in the tree according to the key
+// if no match is found, it returns an empty slice
+func (T *RTree) GetAllMatches(key string) []interface{} {
+	results := []interface{}{}
+	if len(key) == 0 {
+		if T.Root.Leaf != nil {
+			results = append(results, T.Root.Leaf.Val)
+			return results
+		}
+		return results
+	}
+
+	n := T.Root
+	for {
+		if n == nil {
+			return results
+		}
+
+		offset := commonPrefixOffset(n.Prefix, key)
+		if offset == -1 {
+			n = n.Next
+			continue
+		} else if offset == len(n.Prefix)-1 && offset < len(key)-1 {
+			if n.Leaf != nil {
+				results = append(results, n.Leaf.Val)
+			}
+			key = key[offset+1:]
+			n = n.Children
+			continue
+		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
+			results = append(results, n.Leaf.Val)
+			return results
+		}
+		return results
+	}
+}
+
+// split splits node into two nodes: parent and child.
+// node1's prefix is [0, offset)
+// node2's prefix is [offset, len-1]
+func split(n *node, offset int) (*node, bool) {
+	if n == nil || offset <= 0 || offset > len(n.Prefix)-1 {
 		return nil, false
 	}
 
-	newNode := &node{Prefix: n.Prefix[id:]}
+	newNode := &node{Prefix: n.Prefix[offset:]}
 	newNode.Children = n.Children
 	newNode.Leaf = n.Leaf
 	n.Children = newNode
 	n.Leaf = nil
-	n.Prefix = n.Prefix[:id]
+	n.Prefix = n.Prefix[:offset]
 	return newNode, true
 }
 
-// Insert adds value on the leaf of path
-// if path already exists, it will update the value and returns former value.
-func (T *RTree) Insert(path string, val interface{}) (interface{}, bool) {
+// Insert adds a value in the tree. The value can be found by the key.
+// if path already exists, it updates the value and returns former value.
+func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 	if T.Root == nil {
 		return nil, false
 	}
-	if len(path) == 0 {
+	if len(key) == 0 {
 		return T.updateLeafVal(T.Root, "", val)
 	}
 
 	n := T.Root
-	pathSuffix := path
+	pathSuffix := key
 	for {
-		id := commonPrefixID(n.Prefix, pathSuffix)
-		if id == -1 {
+		offset := commonPrefixOffset(n.Prefix, pathSuffix)
+		if offset == -1 {
 			if n.Next != nil {
 				n = n.Next
 				continue
 			}
-			n.Next = newNode(pathSuffix, nil, nil, &leafNode{Key: path, Val: val})
+			n.Next = newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
 			T.Size++
 			return nil, true
-		} else if id < len(n.Prefix)-1 {
-			childNode, ok := split(n, id+1)
+		} else if offset < len(n.Prefix)-1 {
+			childNode, ok := split(n, offset+1)
 			if !ok {
 				return nil, false
 			}
-			if id < len(pathSuffix)-1 {
-				childNode.Next = newNode(pathSuffix[id+1:], nil, nil, &leafNode{Key: path, Val: val})
+			if offset < len(pathSuffix)-1 {
+				childNode.Next = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
 				T.Size++
 				return nil, true
 			}
-			n.Leaf = &leafNode{Key: path, Val: val}
+			n.Leaf = &leafNode{Key: key, Val: val}
 			T.Size++
 			return nil, true
 		}
-		if id < len(pathSuffix)-1 {
+		if offset < len(pathSuffix)-1 {
 			if n.Children != nil {
-				pathSuffix = pathSuffix[id+1:]
+				pathSuffix = pathSuffix[offset+1:]
 				n = n.Children
 				continue
 			}
-			n.Children = newNode(pathSuffix[id+1:], nil, nil, &leafNode{Key: path, Val: val})
+			n.Children = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
 			T.Size++
 			return nil, true
 		}
-		return T.updateLeafVal(n, path, val)
+		return T.updateLeafVal(n, key, val)
 	}
 }
 
-// updateLeafVal updates attributes of a leafNode
-// if node has no leaf, new leafNode will be assigned to the node
+// updateLeafVal updates fields of a leafNode
+// if node has no leaf, a new leafNode will be assigned to the node
 // *node n must exist or it will create a new node
 func (T *RTree) updateLeafVal(n *node, key string, newVal interface{}) (interface{}, bool) {
 	if n.Leaf == nil {
@@ -191,16 +229,16 @@ func (T *RTree) Remove(path string) bool {
 			return false
 		}
 
-		id := commonPrefixID(child.Prefix, path)
-		if id == -1 {
+		offset := commonPrefixOffset(child.Prefix, path)
+		if offset == -1 {
 			child = child.Next
 			continue
-		} else if id == len(child.Prefix)-1 && id < len(path)-1 {
-			path = path[id+1:]
+		} else if offset == len(child.Prefix)-1 && offset < len(path)-1 {
+			path = path[offset+1:]
 			parent = child
 			child = child.Children
 			continue
-		} else if id == len(child.Prefix)-1 && id == len(path)-1 && child.Leaf != nil {
+		} else if offset == len(child.Prefix)-1 && offset == len(path)-1 && child.Leaf != nil {
 			return T.removeChild(parent, child)
 		}
 		return false
