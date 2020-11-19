@@ -11,7 +11,7 @@ _A fast and simple (200+ lines) radix tree implementation in Go/Golang._
 * good performance ([benchmark](https://github.com/ihexxa/radix-bench))
 * more ways to query: GetAllMatches
 * simple interfaces
-* well tested (unit test and random test)
+* well tested (unit tests and random tests)
 
 ### Install
 
