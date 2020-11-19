@@ -8,7 +8,7 @@ _A fast and simple (200+ lines) radix tree implementation in Go/Golang._
 
 ### Features
 
-* good performance
+* good performance ([benchmark](https://github.com/ihexxa/radix-bench))
 * more ways to query: GetAllMatches
 * simple interfaces
 * well tested (unit test and random test)
@@ -18,6 +18,8 @@ _A fast and simple (200+ lines) radix tree implementation in Go/Golang._
 Install q-radix: `go get github.com/ihexxa/q-radix`
 
 ### Examples
+
+Document is [here](https://pkg.go.dev/github.com/ihexxa/q-radix).
 
 ```go
 // import q-radix
