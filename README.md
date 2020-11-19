@@ -1,9 +1,10 @@
 # q-radix
 
-_A cute(Q) radix tree implementation in Go/Golang with good performance._
+[![Build Status](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](https://travis-ci.org/ihexxa/q-radix)
+[![Go Report](https://goreportcard.com/badge/github.com/ihexxa/q-radix)](https://goreportcard.com/report/github.com/ihexxa/q-radix)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/ihexxa/q-radix)](https://pkg.go.dev/github.com/ihexxa/q-radix)
 
-[![](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](build)
-[![](https://goreportcard.com/badge/github.com/ihexxa/q-radix)](goreport)
+_A fast and simple (200+ lines) radix tree implementation in Go/Golang._
 
 ### Features
 
