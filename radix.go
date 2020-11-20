@@ -25,8 +25,8 @@ func newNode(prefix string, children *node, next *node, leaf *leafNode) *node {
 
 // RTree is a radix tree
 type RTree struct {
-	Root *node
-	Size int
+	root *node
+	size int
 }
 
 func commonPrefixOffset(s1 string, s2 string) int {
@@ -41,20 +41,25 @@ func commonPrefixOffset(s1 string, s2 string) int {
 
 // NewRTree returns a new radix tree
 func NewRTree() *RTree {
-	return &RTree{Root: &node{}}
+	return &RTree{root: &node{}}
+}
+
+// Size returns the size of the tree
+func (T *RTree) Size() int {
+	return T.size
 }
 
 // Get returns a value according to key
 // if no match is found, it returns (nil, false) instead
 func (T *RTree) Get(key string) (interface{}, bool) {
 	if len(key) == 0 {
-		if T.Root.Leaf != nil {
-			return T.Root.Leaf.Val, true
+		if T.root.Leaf != nil {
+			return T.root.Leaf.Val, true
 		}
 		return nil, false
 	}
 
-	n := T.Root
+	n := T.root
 	for {
 		if n == nil {
 			return nil, false
@@ -80,14 +85,14 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 func (T *RTree) GetAllMatches(key string) []interface{} {
 	results := []interface{}{}
 	if len(key) == 0 {
-		if T.Root.Leaf != nil {
-			results = append(results, T.Root.Leaf.Val)
+		if T.root.Leaf != nil {
+			results = append(results, T.root.Leaf.Val)
 			return results
 		}
 		return results
 	}
 
-	n := T.Root
+	n := T.root
 	for {
 		if n == nil {
 			return results
@@ -132,14 +137,14 @@ func split(n *node, offset int) (*node, bool) {
 // Insert adds a value in the tree. The value can be found by the key.
 // if path already exists, it updates the value and returns former value.
 func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
-	if T.Root == nil {
+	if T.root == nil {
 		return nil, false
 	}
 	if len(key) == 0 {
-		return T.updateLeafVal(T.Root, "", val)
+		return T.updateLeafVal(T.root, "", val)
 	}
 
-	n := T.Root
+	n := T.root
 	pathSuffix := key
 	for {
 		offset := commonPrefixOffset(n.Prefix, pathSuffix)
@@ -149,7 +154,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 				continue
 			}
 			n.Next = newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
-			T.Size++
+			T.size++
 			return nil, true
 		} else if offset < len(n.Prefix)-1 {
 			childNode, ok := split(n, offset+1)
@@ -158,11 +163,11 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			}
 			if offset < len(pathSuffix)-1 {
 				childNode.Next = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
-				T.Size++
+				T.size++
 				return nil, true
 			}
 			n.Leaf = &leafNode{Key: key, Val: val}
-			T.Size++
+			T.size++
 			return nil, true
 		}
 		if offset < len(pathSuffix)-1 {
@@ -172,7 +177,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 				continue
 			}
 			n.Children = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
-			T.Size++
+			T.size++
 			return nil, true
 		}
 		return T.updateLeafVal(n, key, val)
@@ -185,7 +190,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 func (T *RTree) updateLeafVal(n *node, key string, newVal interface{}) (interface{}, bool) {
 	if n.Leaf == nil {
 		n.Leaf = &leafNode{Key: key, Val: newVal}
-		T.Size++
+		T.size++
 		return nil, true
 	}
 
@@ -215,15 +220,15 @@ func merge(parent *node, child *node) bool {
 // if the leaf node doesn't exist, it will return false
 func (T *RTree) Remove(path string) bool {
 	if len(path) == 0 {
-		if T.Root.Leaf != nil {
-			T.Root.Leaf = nil
+		if T.root.Leaf != nil {
+			T.root.Leaf = nil
 			return true
 		}
 		return false
 	}
 
-	parent := T.Root
-	child := T.Root
+	parent := T.root
+	child := T.root
 	for {
 		if child == nil {
 			return false
@@ -252,8 +257,8 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	}
 
 	child.Leaf = nil
-	if T.Size > 0 {
-		T.Size--
+	if T.size > 0 {
+		T.size--
 	}
 	if child.Children != nil {
 		if child.Next == nil {
@@ -268,8 +273,8 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	}
 	// child is not the first child, search for the previous node of child
 	previousChild := parent.Children
-	if parent == T.Root {
-		previousChild = T.Root
+	if parent == T.root {
+		previousChild = T.root
 	}
 	for previousChild != nil && previousChild.Next != child {
 		previousChild = previousChild.Next

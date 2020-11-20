@@ -28,7 +28,7 @@ import qradix "github.com/ihexxa/q-radix"
 
 rTree := qradix.NewRTree() // create a new radix tree
 ok := rTree.Insert("key", value) // insert value in any type with a string key
-treeSize := rTree.Size // get the size of radix tree
+treeSize := rTree.Size() // get the size of the radix tree
 
 val, ok := rTree.Get("key") // get the value by key
 val, ok := rTree.GetAllMatches("key") // get all prefix matches of the key
