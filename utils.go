@@ -14,7 +14,7 @@ var (
 // BFS is breadth first traverse on the radix tree
 func BFS(T *RTree, function func(*node)) {
 	Q := make([]*node, 0)
-	Q = append(Q, T.Root)
+	Q = append(Q, T.root)
 
 	for len(Q) > 0 {
 		n := Q[0]

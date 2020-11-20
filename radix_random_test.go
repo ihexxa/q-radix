@@ -133,7 +133,7 @@ func isEqual(tree *RTree, dict map[string]string) bool {
 	}
 
 	// check if all keys in rtree are also in map
-	return preOrderAndCompare(tree.Root, dict)
+	return preOrderAndCompare(tree.root, dict)
 }
 
 func preOrderAndCompare(n *node, M map[string]string) bool {

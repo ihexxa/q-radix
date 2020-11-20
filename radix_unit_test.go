@@ -24,7 +24,7 @@ func testInsert(t *testing.T) {
 			t.Errorf("the insert key [%s] is not found", testCase[1])
 		}
 	}
-	if rTree.Size != len(cases) {
+	if rTree.Size() != len(cases) {
 		t.Error("the size of radix tree is not correct")
 	}
 }
@@ -61,7 +61,7 @@ func testRemove(t *testing.T) {
 			t.Errorf("insert key [%s] is not removed", testCase[1])
 		}
 	}
-	if rTree.Size != len(values)-len(cases) {
+	if rTree.Size() != len(values)-len(cases) {
 		t.Error("the size of radix tree is not correct")
 	}
 }
