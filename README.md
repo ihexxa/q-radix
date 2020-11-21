@@ -13,10 +13,6 @@ _A fast and simple (200+ lines) radix tree implementation in Go/Golang._
 * simple interfaces
 * well tested (unit tests and random tests)
 
-### Install
-
-Install q-radix: `go get github.com/ihexxa/q-radix`
-
 ### Examples
 
 Document is [here](https://pkg.go.dev/github.com/ihexxa/q-radix).
