@@ -117,6 +117,16 @@ func (T *RTree) GetAllMatches(key string) []interface{} {
 	}
 }
 
+// GetLongestMatch returns the longest match in the tree according to the key
+// if no match is found, it returns nil and false
+func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
+	matches := T.GetAllMatches(key)
+	if len(matches) == 0 {
+		return nil, false
+	}
+	return matches[len(matches)-1], true
+}
+
 // split splits node into two nodes: parent and child.
 // node1's prefix is [0, offset)
 // node2's prefix is [offset, len-1]
