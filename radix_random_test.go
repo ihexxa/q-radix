@@ -15,12 +15,12 @@ const (
 
 var (
 	// use -args to input these options: "go test -args -d=true"
-	actionCount = flag.Int("c", 10, "how many actions will be applied on RTree and map")
+	actionCount = flag.Int("c", 30, "how many actions will be applied on RTree and map")
 	insertRatio = flag.Int("i", 60, "control the the ratio between insert action and remove action")
 	maxLen      = flag.Int("l", 5, "how long will random string be generated")
 	seed        = flag.Int64("s", 0, "seed can be set to specific value to re-produce test failure")
 	testRound   = flag.Int("r", 10, "how many times will random test run")
-	treeHeight  = flag.Int("h", 3, "how many times will random suffix be append to root node's string")
+	treeHeight  = flag.Int("h", 6, "how many times will random suffix be append to root node's string")
 	treeWidth   = flag.Int("w", 3, "how many random suffix will be append after node's string")
 )
 
@@ -64,7 +64,35 @@ func randomTest(t *testing.T) {
 				*seed,
 			)
 		}
+		prefixes := tree.GetAllPrefixMatches(key)
+		if !checkPrefixMatches(key, prefixes, tree, dict) {
+			fmt.Printf("prefixes of (%s): %+v\n", key, prefixes)
+			printActions(actions)
+			printRTree(tree)
+			printMap(dict)
+			t.Fatalf("incorrect prefix matches")
+		}
 	}
+}
+
+func checkPrefixMatches(
+	key string,
+	prefixes map[string]interface{},
+	tree *RTree,
+	dict map[string]string,
+) bool {
+	for offset := range []rune(key) {
+		prefix := string([]rune(key)[:offset])
+		val1, ok := dict[prefix]
+		if ok {
+			val2, ok2 := prefixes[prefix]
+			if !ok2 || val1 != val2.(string) {
+				fmt.Printf("prefix map(%s) tree(%+v) not match\n", val1, val2)
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func GetTestStrings() []string {
@@ -72,10 +100,10 @@ func GetTestStrings() []string {
 	var randomStrings []string
 
 	GetRandomKeys(&str, *treeWidth, *treeHeight, &randomStrings)
-	print("\n\nrandom strings")
-	for _, str := range randomStrings {
-		print(str)
-	}
+	// print("\n\nrandom strings")
+	// for _, str := range randomStrings {
+	// 	print(str)
+	// }
 
 	return randomStrings
 }
@@ -119,7 +147,7 @@ func doRandomAction(actions *[]string, key string, tree *RTree, dict map[string]
 		if dict != nil {
 			dict[key] = key
 		}
-		*actions = append(*actions, fmt.Sprintf("%s %s", insertAction, key))
+		*actions = append(*actions, fmt.Sprintf("%s (%s)", insertAction, key))
 	} else {
 		if tree != nil {
 			tree.Remove(key)
