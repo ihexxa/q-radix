@@ -1,11 +1,14 @@
 package qradix
 
+import "fmt"
+
 // node is a node of radix tree and it is not a leaf
 type node struct {
 	Prefix   string
 	Children *node
 	Next     *node
 	Leaf     *leafNode
+	Idx      map[rune]*node // Idx finds the sibling with the first rune of the current key
 }
 
 // leafNode stores all values
@@ -29,7 +32,7 @@ type RTree struct {
 	size int
 }
 
-func commonPrefixOffset(s1 string, s2 string) int {
+func commonPrefixOffset(s1, s2 string) int {
 	i := 0
 	for ; i < len(s1) && i < len(s2); i++ {
 		if s1[i] != s2[i] {
@@ -41,7 +44,7 @@ func commonPrefixOffset(s1 string, s2 string) int {
 
 // NewRTree returns a new radix tree
 func NewRTree() *RTree {
-	return &RTree{root: &node{}}
+	return &RTree{root: &node{Idx: map[rune]*node{}}}
 }
 
 // Size returns the size of the tree
@@ -49,8 +52,8 @@ func (T *RTree) Size() int {
 	return T.size
 }
 
-// Get returns a value according to key
-// if no match is found, it returns (nil, false) instead
+// Get returns a value according to the key
+// if the key does not exist, it returns (nil, false)
 func (T *RTree) Get(key string) (interface{}, bool) {
 	if len(key) == 0 {
 		if T.root.Leaf != nil {
@@ -59,73 +62,115 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	n := T.root
+	var ok bool
+	var matchedNode *node
+	var rune1 rune
+	node1 := T.root
 	for {
-		if n == nil {
+		if node1 == nil {
 			return nil, false
 		}
 
-		offset := commonPrefixOffset(n.Prefix, key)
+		// try to find the matched node in this level with the first rune of key
+		rune1 = []rune(key)[0]
+		matchedNode, ok = node1.Idx[rune1]
+		if !ok {
+			return nil, false
+		}
+
+		offset := commonPrefixOffset(matchedNode.Prefix, key)
 		if offset == -1 {
-			n = n.Next
-			continue
-		} else if offset == len(n.Prefix)-1 && offset < len(key)-1 {
+			// this is impossible
+			panic(fmt.Sprintf("the first rune of %s and %s must be same", matchedNode.Prefix, key))
+			// n is not the first child in this level (because n.Idx != nil is checked above)
+			// and no other match will be found in this level
+			// return nil, false
+			// n = n.Next
+			// continue
+		} else if offset == len(matchedNode.Prefix)-1 && offset < len(key)-1 {
 			key = key[offset+1:]
-			n = n.Children
+			node1 = matchedNode.Children
 			continue
-		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
-			return n.Leaf.Val, true
+		} else if offset == len(matchedNode.Prefix)-1 && offset == len(key)-1 && matchedNode.Leaf != nil {
+			return matchedNode.Leaf.Val, true
 		}
 		return nil, false
 	}
 }
 
-// GetAllMatches returns all the prefix matches in the tree according to the key
+type searchProgress struct {
+	key string // the key to match, normally it is a suffix of original key
+	n   *node  // the node to check
+}
+
+// GetAllMatches returns all prefix matches in the tree according to the key
 // if no match is found, it returns an empty slice
-func (T *RTree) GetAllMatches(key string) []interface{} {
-	results := []interface{}{}
-	if len(key) == 0 {
-		if T.root.Leaf != nil {
-			results = append(results, T.root.Leaf.Val)
-			return results
-		}
-		return results
-	}
+// func (T *RTree) GetAllMatches(key string) map[string]interface{} {
+// 	resultMap := map[string]interface{}{}
+// 	if len(key) == 0 {
+// 		if T.root.Leaf != nil {
+// 			resultMap[T.root.Leaf.Key] = T.root.Leaf.Val
+// 		}
+// 		return resultMap
+// 	}
 
-	n := T.root
-	for {
-		if n == nil {
-			return results
-		}
+// 	queue := []*searchProgress{
+// 		&searchProgress{
+// 			key: key,
+// 			n:   T.root,
+// 		},
+// 	}
+// 	for len(queue) > 0 {
+// 		progress := queue[0]
+// 		queue = queue[1:]
 
-		offset := commonPrefixOffset(n.Prefix, key)
-		if offset == -1 {
-			n = n.Next
-			continue
-		} else if offset == len(n.Prefix)-1 && offset < len(key)-1 {
-			if n.Leaf != nil {
-				results = append(results, n.Leaf.Val)
-			}
-			key = key[offset+1:]
-			n = n.Children
-			continue
-		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
-			results = append(results, n.Leaf.Val)
-			return results
-		}
-		return results
-	}
-}
+// 		offset := commonPrefixOffset(progress.n.Prefix, progress.key)
+// 		if offset == -1 {
+// 			if progress.n.Next != nil {
+// 				queue = append(queue, &searchProgress{
+// 					key: key,
+// 					n:   progress.n.Next,
+// 				})
+// 			}
+// 			continue
+// 		} else if offset == len(n.Prefix)-1 {
+// 			if n.Leaf != nil {
+// 				resultMap[n.Leaf.Key] = n.Leaf.Val
+// 			}
 
-// GetLongestMatch returns the longest match in the tree according to the key
-// if no match is found, it returns nil and false
-func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
-	matches := T.GetAllMatches(key)
-	if len(matches) == 0 {
-		return nil, false
-	}
-	return matches[len(matches)-1], true
-}
+// 			if offset < len(key)-1 {
+// 				if n.Children != nil {
+// 					queue = append(queue, n.Children)
+// 				}
+// 				continue
+// 			} else if offset == len(key)-1 {
+// 				if n.Next != nil {
+// 					queue = append(queue, n.Next)
+// 				}
+// 				continue
+// 			}
+// 			key = key[offset+1:]
+// 			// n = n.Children
+// 			// continue
+// 		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
+// 			resultMap[n.Leaf.Key] = n.Leaf.Val
+// 			n = n.Next
+// 			continue
+// 		}
+// 	}
+
+// 	return resultMap
+// }
+
+// // GetLongestMatch returns the longest match in the tree according to the key
+// // if there is no match, it returns nil and false
+// func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
+// 	matches := T.GetAllMatches(key)
+// 	if len(matches) == 0 {
+// 		return nil, false
+// 	}
+// 	return matches[len(matches)-1], true
+// }
 
 // split splits node into two nodes: parent and child.
 // node1's prefix is [0, offset)
@@ -138,14 +183,17 @@ func split(n *node, offset int) (*node, bool) {
 	newNode := &node{Prefix: n.Prefix[offset:]}
 	newNode.Children = n.Children
 	newNode.Leaf = n.Leaf
+	newNode.Idx = map[rune]*node{
+		[]rune(newNode.Prefix)[0]: newNode, // add self to index
+	}
 	n.Children = newNode
 	n.Leaf = nil
 	n.Prefix = n.Prefix[:offset]
 	return newNode, true
 }
 
-// Insert adds a value in the tree. The value can be found by the key.
-// if path already exists, it updates the value and returns former value.
+// Insert adds a value in the tree. Then the value can be found by the key.
+// if path already exists, it updates the value and returns the former value.
 func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 	if T.root == nil {
 		return nil, false
@@ -154,43 +202,77 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 		return T.updateLeafVal(T.root, "", val)
 	}
 
-	n := T.root
+	// n := T.root
 	pathSuffix := key
+	// node1 is the first node at this level
+	// matchedNode is the node which first rune matches to the first rune of key
+	var node1 = T.root
+	var matchedNode *node
+	var rune1 rune
+	var ok bool
 	for {
-		offset := commonPrefixOffset(n.Prefix, pathSuffix)
-		if offset == -1 {
-			if n.Next != nil {
-				n = n.Next
-				continue
-			}
-			n.Next = newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
+		// search the key level by level
+		rune1 = []rune(pathSuffix)[0]
+		matchedNode, ok = node1.Idx[rune1]
+		if !ok {
+			// no match in this level, insert a new node after the node1
+			newNode := newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
+			newNode.Next = node1.Next
+			node1.Next = newNode
+			node1.Idx[rune1] = newNode
 			T.size++
 			return nil, true
-		} else if offset < len(n.Prefix)-1 {
-			childNode, ok := split(n, offset+1)
+		}
+
+		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
+		if offset == -1 {
+			// no match at this level
+			// this is impossible
+			panic(fmt.Sprintf("the first rune of %s and %s must be same", matchedNode.Prefix, key))
+			// newNode := newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
+			// newNode.Next = node1.Next
+			// node1.Next = newNode
+			// node1.Idx[rune1] = newNode
+			// T.size++
+			// return nil, true
+		} else if offset < len(matchedNode.Prefix)-1 {
+			// partial matched to matchedNode.Prefix
+			childNode, ok := split(matchedNode, offset+1)
 			if !ok {
 				return nil, false
 			}
+			// pathSuffix is longer, add the node as child's sibling
 			if offset < len(pathSuffix)-1 {
-				childNode.Next = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
+				newNodePrefix := pathSuffix[offset+1:]
+				childNode.Next = newNode(newNodePrefix, nil, nil, &leafNode{Key: key, Val: val})
+				childNode.Idx[[]rune(newNodePrefix)[0]] = childNode.Next
 				T.size++
 				return nil, true
 			}
-			n.Leaf = &leafNode{Key: key, Val: val}
+			// pathSuffix is same as n'prefix, update n's leaf
+			// matchedNode must have no leaf because it was just splitted
+			matchedNode.Leaf = &leafNode{Key: key, Val: val}
 			T.size++
 			return nil, true
 		}
 		if offset < len(pathSuffix)-1 {
-			if n.Children != nil {
+			// search children for left pathSuffix
+			if matchedNode.Children != nil {
 				pathSuffix = pathSuffix[offset+1:]
-				n = n.Children
+				node1 = matchedNode.Children
 				continue
 			}
-			n.Children = newNode(pathSuffix[offset+1:], nil, nil, &leafNode{Key: key, Val: val})
+			// matchedNode has no children, add the first child with pathSuffix[offset+1:]
+			newNodePrefix := pathSuffix[offset+1:]
+			matchedNode.Children = newNode(newNodePrefix, nil, nil, &leafNode{Key: key, Val: val})
+			matchedNode.Children.Idx = map[rune]*node{}
+			matchedNode.Children.Idx[[]rune(newNodePrefix)[0]] = matchedNode.Children
 			T.size++
 			return nil, true
 		}
-		return T.updateLeafVal(n, key, val)
+
+		// update current node's leaf
+		return T.updateLeafVal(matchedNode, key, val)
 	}
 }
 
@@ -226,35 +308,49 @@ func merge(parent *node, child *node) bool {
 	return false
 }
 
-// Remove deletes leaf node at the end of the path
-// if the leaf node doesn't exist, it will return false
-func (T *RTree) Remove(path string) bool {
-	if len(path) == 0 {
+// Remove deletes the leaf node according to the path
+// if the leaf node exists, it will be deleted and "true" will be returned.
+// or "false" will be returned.
+func (T *RTree) Remove(key string) bool {
+	if len(key) == 0 {
 		if T.root.Leaf != nil {
 			T.root.Leaf = nil
+			// TODO: T.root is not counted? count--
 			return true
 		}
 		return false
 	}
 
+	// TODO: it is a little confuse here
+	// because parent sometimes is a sibling of the child, not parent
+	pathSuffix := key
 	parent := T.root
-	child := T.root
+	node1 := T.root
+	var matchedNode *node
+	var ok bool
+	var rune1 rune
 	for {
-		if child == nil {
+		if node1 == nil {
+			return false
+		}
+		rune1 = []rune(pathSuffix)[0]
+		matchedNode, ok = node1.Idx[rune1]
+		if !ok {
+			// no match at this level
 			return false
 		}
 
-		offset := commonPrefixOffset(child.Prefix, path)
+		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
 		if offset == -1 {
-			child = child.Next
+			// this is impossible
+			panic(fmt.Sprintf("the first rune of %s and %s must be same", matchedNode.Prefix, pathSuffix))
+		} else if offset == len(matchedNode.Prefix)-1 && offset < len(pathSuffix)-1 {
+			pathSuffix = pathSuffix[offset+1:]
+			parent = matchedNode
+			node1 = matchedNode.Children
 			continue
-		} else if offset == len(child.Prefix)-1 && offset < len(path)-1 {
-			path = path[offset+1:]
-			parent = child
-			child = child.Children
-			continue
-		} else if offset == len(child.Prefix)-1 && offset == len(path)-1 && child.Leaf != nil {
-			return T.removeChild(parent, child)
+		} else if offset == len(matchedNode.Prefix)-1 && offset == len(pathSuffix)-1 && matchedNode.Leaf != nil {
+			return T.removeChild(parent, matchedNode)
 		}
 		return false
 	}
@@ -265,35 +361,41 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	if child == nil {
 		return false
 	}
-
-	child.Leaf = nil
-	if T.size > 0 {
+	if child.Leaf != nil {
+		child.Leaf = nil
 		T.size--
 	}
+
+	// if child has no sibling, merge it with its children
 	if child.Children != nil {
-		if child.Next == nil {
-			merge(child, child.Children)
-		}
+		merge(child, child.Children)
 		return true
 	}
-	// child is the first child and has no child
+	// child is the first child and it has no child， delete child
 	if parent.Children == child {
+		delete(child.Idx, []rune(child.Prefix)[0])
+		if child.Next != nil {
+			child.Next.Idx = child.Idx
+		}
 		parent.Children = child.Next
 		return true
 	}
 	// child is not the first child, search for the previous node of child
 	previousChild := parent.Children
 	if parent == T.root {
+		// when parent is T.root, it means parent and parent.Children are in the same level
 		previousChild = T.root
 	}
+	delete(previousChild.Idx, []rune(child.Prefix)[0])
+
 	for previousChild != nil && previousChild.Next != child {
 		previousChild = previousChild.Next
 	}
 	if previousChild == nil {
-		return false
+		panic("the previousChild not found")
 	}
 	previousChild.Next = previousChild.Next.Next
-	// if only 1 child is left
+	// merge will try to merge parent and parent's first child if there is only 1 child left
 	merge(parent, parent.Children)
 	return true
 }

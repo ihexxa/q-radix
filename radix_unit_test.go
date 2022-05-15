@@ -7,8 +7,8 @@ import (
 func TestOperations(t *testing.T) {
 	t.Run("test Insert", testInsert)
 	t.Run("test Remove", testRemove)
-	t.Run("test GetAllMatches", testGetAllMatches)
-	t.Run("test GetLongestMatch", testGetLongestMatch)
+	// t.Run("test GetAllMatches", testGetAllMatches)
+	// t.Run("test GetLongestMatch", testGetLongestMatch)
 }
 
 func testInsert(t *testing.T) {
@@ -69,100 +69,100 @@ func testRemove(t *testing.T) {
 	}
 }
 
-func testGetAllMatches(t *testing.T) {
-	type TestCase struct {
-		desc    string
-		inserts []string
-		get     string
-		expect  []string
-	}
+// func testGetAllMatches(t *testing.T) {
+// 	type TestCase struct {
+// 		desc    string
+// 		inserts []string
+// 		get     string
+// 		expect  []string
+// 	}
 
-	testCases := []*TestCase{
-		&TestCase{
-			desc:    "match along 1 of 2 braches",
-			inserts: []string{"a", "ab", "ac", "abc", "abcd"},
-			get:     "abc",
-			expect:  []string{"a", "ab", "abc"},
-		},
-		&TestCase{
-			desc:    "single word",
-			inserts: []string{"a"},
-			get:     "a",
-			expect:  []string{"a"},
-		},
-		&TestCase{
-			desc:    "found a match shorter than key",
-			inserts: []string{"a", "ab", "abd"},
-			get:     "abc",
-			expect:  []string{"a", "ab"},
-		},
-	}
+// 	testCases := []*TestCase{
+// 		&TestCase{
+// 			desc:    "match along 1 of 2 braches",
+// 			inserts: []string{"a", "ab", "ac", "abc", "abcd"},
+// 			get:     "abc",
+// 			expect:  []string{"a", "ab", "abc"},
+// 		},
+// 		&TestCase{
+// 			desc:    "single word",
+// 			inserts: []string{"a"},
+// 			get:     "a",
+// 			expect:  []string{"a"},
+// 		},
+// 		&TestCase{
+// 			desc:    "found a match shorter than key",
+// 			inserts: []string{"a", "ab", "abd"},
+// 			get:     "abc",
+// 			expect:  []string{"a", "ab"},
+// 		},
+// 	}
 
-	for _, tc := range testCases {
-		rTree := NewRTree()
+// 	for _, tc := range testCases {
+// 		rTree := NewRTree()
 
-		for _, insert := range tc.inserts {
-			rTree.Insert(insert, insert)
-		}
-		matches := rTree.GetAllMatches(tc.get)
-		for i, match := range matches {
-			strMatch := match.(string)
-			if strMatch != tc.expect[i] {
-				t.Errorf("GetAllMatches: got %s expect %s", strMatch, tc.expect[i])
-			}
-		}
-	}
-}
+// 		for _, insert := range tc.inserts {
+// 			rTree.Insert(insert, insert)
+// 		}
+// 		matches := rTree.GetAllMatches(tc.get)
+// 		for i, match := range matches {
+// 			strMatch := match.(string)
+// 			if strMatch != tc.expect[i] {
+// 				t.Errorf("GetAllMatches: got %s expect %s", strMatch, tc.expect[i])
+// 			}
+// 		}
+// 	}
+// }
 
-func testGetLongestMatch(t *testing.T) {
-	type TestCase struct {
-		desc    string
-		inserts []string
-		get     string
-		expect  []string
-	}
+// func testGetLongestMatch(t *testing.T) {
+// 	type TestCase struct {
+// 		desc    string
+// 		inserts []string
+// 		get     string
+// 		expect  []string
+// 	}
 
-	testCases := []*TestCase{
-		&TestCase{
-			desc:    "found a match as long as key",
-			inserts: []string{"a", "ab", "ac", "abc", "abcd"},
-			get:     "abc",
-			expect:  []string{"abc"},
-		},
-		&TestCase{
-			desc:    "found a match shorter than key",
-			inserts: []string{"a", "ab", "abd"},
-			get:     "abc",
-			expect:  []string{"ab"},
-		},
-		&TestCase{
-			desc:    "no match found",
-			inserts: []string{"a", "ab", "abd"},
-			get:     "c",
-			expect:  []string{},
-		},
-	}
+// 	testCases := []*TestCase{
+// 		&TestCase{
+// 			desc:    "found a match as long as key",
+// 			inserts: []string{"a", "ab", "ac", "abc", "abcd"},
+// 			get:     "abc",
+// 			expect:  []string{"abc"},
+// 		},
+// 		&TestCase{
+// 			desc:    "found a match shorter than key",
+// 			inserts: []string{"a", "ab", "abd"},
+// 			get:     "abc",
+// 			expect:  []string{"ab"},
+// 		},
+// 		&TestCase{
+// 			desc:    "no match found",
+// 			inserts: []string{"a", "ab", "abd"},
+// 			get:     "c",
+// 			expect:  []string{},
+// 		},
+// 	}
 
-	for _, tc := range testCases {
-		rTree := NewRTree()
+// 	for _, tc := range testCases {
+// 		rTree := NewRTree()
 
-		for _, insert := range tc.inserts {
-			rTree.Insert(insert, insert)
-		}
+// 		for _, insert := range tc.inserts {
+// 			rTree.Insert(insert, insert)
+// 		}
 
-		match, found := rTree.GetLongestMatch(tc.get)
-		if len(tc.expect) == 0 {
-			if found {
-				t.Errorf("GetLongestMatch(%s): expect no match but found one %s", tc.desc, match)
-			} else {
-				continue
-			}
-		} else {
-			if tc.expect[0] != match {
-				t.Errorf("GetLongestMatch(%s): got %s expect %s", tc.desc, match, tc.expect[0])
-			} else {
-				continue
-			}
-		}
-	}
-}
+// 		match, found := rTree.GetLongestMatch(tc.get)
+// 		if len(tc.expect) == 0 {
+// 			if found {
+// 				t.Errorf("GetLongestMatch(%s): expect no match but found one %s", tc.desc, match)
+// 			} else {
+// 				continue
+// 			}
+// 		} else {
+// 			if tc.expect[0] != match {
+// 				t.Errorf("GetLongestMatch(%s): got %s expect %s", tc.desc, match, tc.expect[0])
+// 			} else {
+// 				continue
+// 			}
+// 		}
+// 	}
+// }

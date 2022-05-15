@@ -18,8 +18,8 @@ var (
 	actionCount = flag.Int("c", 10, "how many actions will be applied on RTree and map")
 	insertRatio = flag.Int("i", 60, "control the the ratio between insert action and remove action")
 	maxLen      = flag.Int("l", 5, "how long will random string be generated")
-	seed        = flag.Int64("s", 10, "seed can be set to specific value to re-produce test failure")
-	testRound   = flag.Int("r", 1, "how many times will random test run")
+	seed        = flag.Int64("s", 0, "seed can be set to specific value to re-produce test failure")
+	testRound   = flag.Int("r", 10, "how many times will random test run")
 	treeHeight  = flag.Int("h", 3, "how many times will random suffix be append to root node's string")
 	treeWidth   = flag.Int("w", 3, "how many random suffix will be append after node's string")
 )
@@ -51,10 +51,10 @@ func randomTest(t *testing.T) {
 
 		doRandomAction(&actions, key, tree, dict)
 		if !isEqual(tree, dict) {
-			t.Errorf("Tree is not identical to Map, seed: %d", seed)
 			printActions(actions)
 			printRTree(tree)
 			printMap(dict)
+			t.Fatalf("Tree is not identical to Map, seed: %d", *seed)
 		}
 	}
 }
@@ -128,6 +128,7 @@ func isEqual(tree *RTree, dict map[string]string) bool {
 	for key := range dict {
 		_, ok := tree.Get(key)
 		if !ok {
+			fmt.Println("not matched key", key)
 			return false
 		}
 	}
