@@ -36,14 +36,21 @@ type RTree struct {
 	size int
 }
 
+// return common prefix's offset of s1 and s2, in byte
+// s1[:offset] == s2[:offset]
 func commonPrefixOffset(s1, s2 string) int {
 	i := 0
-	for ; i < len(s1) && i < len(s2); i++ {
-		if s1[i] != s2[i] {
+	runes1, runes2 := []rune(s1), []rune(s2)
+	for ; i < len(runes1) && i < len(runes2); i++ {
+		if runes1[i] != runes2[i] {
 			break
 		}
 	}
-	return i - 1
+
+	if i == 0 {
+		return -1
+	}
+	return len(string(runes1[:i])) - 1
 }
 
 // NewRTree returns a new radix tree
@@ -99,80 +106,6 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 }
-
-// type searchProgress struct {
-// 	key string // the key to match, normally it is a suffix of original key
-// 	n   *node  // the node to check
-// }
-
-// GetAllMatches returns all prefix matches in the tree according to the key
-// if no match is found, it returns an empty slice
-// func (T *RTree) GetAllMatches(key string) map[string]interface{} {
-// 	resultMap := map[string]interface{}{}
-// 	if len(key) == 0 {
-// 		if T.root.Leaf != nil {
-// 			resultMap[T.root.Leaf.Key] = T.root.Leaf.Val
-// 		}
-// 		return resultMap
-// 	}
-
-// 	queue := []*searchProgress{
-// 		&searchProgress{
-// 			key: key,
-// 			n:   T.root,
-// 		},
-// 	}
-// 	for len(queue) > 0 {
-// 		progress := queue[0]
-// 		queue = queue[1:]
-
-// 		offset := commonPrefixOffset(progress.n.Prefix, progress.key)
-// 		if offset == -1 {
-// 			if progress.n.Next != nil {
-// 				queue = append(queue, &searchProgress{
-// 					key: key,
-// 					n:   progress.n.Next,
-// 				})
-// 			}
-// 			continue
-// 		} else if offset == len(n.Prefix)-1 {
-// 			if n.Leaf != nil {
-// 				resultMap[n.Leaf.Key] = n.Leaf.Val
-// 			}
-
-// 			if offset < len(key)-1 {
-// 				if n.Children != nil {
-// 					queue = append(queue, n.Children)
-// 				}
-// 				continue
-// 			} else if offset == len(key)-1 {
-// 				if n.Next != nil {
-// 					queue = append(queue, n.Next)
-// 				}
-// 				continue
-// 			}
-// 			key = key[offset+1:]
-// 			// n = n.Children
-// 			// continue
-// 		} else if offset == len(n.Prefix)-1 && offset == len(key)-1 && n.Leaf != nil {
-// 			resultMap[n.Leaf.Key] = n.Leaf.Val
-// 			n = n.Next
-// 			continue
-// 		}
-// 	}
-
-// 	return resultMap
-// }
-
-// // GetLongestMatch returns the longest match in the tree according to the key
-// // if there is no match, it returns nil and false
-// func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
-// 	matches := T.GetAllMatches(key)
-// 	if len(matches) == 0 {
-// 		return nil, false
-// 	}
-// 	return matches[len(matches)-1], true
-// }
 
 // split splits node into two nodes: parent and child.
 // node1's prefix is [0, offset)
@@ -402,3 +335,69 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	merge(parent, parent.Children)
 	return true
 }
+
+func getRune1(key string) rune {
+	return []rune(key)[0]
+}
+
+// GetAllPrefixMatches returns all prefix matches in the tree according to the key
+// if no match is found, it returns an empty map
+func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
+	resultMap := map[string]interface{}{}
+	if T.root.Leaf != nil {
+		resultMap[""] = T.root.Leaf.Val
+	}
+	if len(key) == 0 {
+		return resultMap
+	}
+
+	var ok bool
+	var rune1 rune
+	var matchedNode *node
+	node1 := T.root
+	pathSuffix := key
+	baseOffset := 0 // key[:baseOffset+1] is matched
+	for {
+		if node1 == nil {
+			break
+		}
+
+		// fmt.Printf("prefix(%s)\n", node1.Prefix)
+		rune1 = getRune1(pathSuffix)
+		matchedNode, ok = node1.Idx[rune1]
+		if !ok {
+			break
+		}
+
+		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
+		if offset == -1 {
+			// this is impossible
+			panic(errImpossible(matchedNode.Prefix, key))
+		} else if offset < len(matchedNode.Prefix)-1 {
+			break
+		}
+		if matchedNode.Leaf != nil {
+			resultMap[key[:baseOffset+offset+1]] = matchedNode.Leaf.Val
+		}
+
+		if offset == len(pathSuffix)-1 {
+			break
+		}
+		pathSuffix = pathSuffix[offset+1:]
+		node1 = matchedNode.Children
+		baseOffset += offset + 1
+		continue
+	}
+
+	return resultMap
+}
+
+// GetLongestMatch returns the longest match in the tree according to the key
+// if there is no match, it returns nil and false
+// func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
+// 	matches := T.GetAllMatches(key)
+// 	if len(matches) == 0 {
+// 		return nil, false
+// 	}
+// 	return matches[len(matches)-1], true
+// }
