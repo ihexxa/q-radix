@@ -311,7 +311,7 @@ func (T *RTree) Remove(key string) bool {
 	if len(key) == 0 {
 		if T.root.Leaf != nil {
 			T.root.Leaf = nil
-			// TODO: T.root is not counted? count--
+			T.size--
 			return true
 		}
 		return false
