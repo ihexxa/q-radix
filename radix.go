@@ -362,7 +362,6 @@ func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
 			break
 		}
 
-		// fmt.Printf("prefix(%s)\n", node1.Prefix)
 		rune1 = getRune1(pathSuffix)
 		matchedNode, ok = node1.Idx[rune1]
 		if !ok {
@@ -392,12 +391,18 @@ func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
 	return resultMap
 }
 
-// GetLongestMatch returns the longest match in the tree according to the key
-// if there is no match, it returns nil and false
-// func (T *RTree) GetLongestMatch(key string) (interface{}, bool) {
-// 	matches := T.GetAllMatches(key)
-// 	if len(matches) == 0 {
-// 		return nil, false
-// 	}
-// 	return matches[len(matches)-1], true
-// }
+// GetBestMatch returns the longest match in the tree according to the key
+// if there is no match, it returns empty string, nil and false
+func (T *RTree) GetBestMatch(key string) (string, interface{}, bool) {
+	matches := T.GetAllPrefixMatches(key)
+	if len(matches) == 0 {
+		return "", nil, false
+	}
+	bestPrefix := ""
+	for prefix := range matches {
+		if len(prefix) > len(bestPrefix) {
+			bestPrefix = prefix
+		}
+	}
+	return bestPrefix, matches[bestPrefix], true
+}
