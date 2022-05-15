@@ -13,7 +13,7 @@ type node struct {
 
 // leafNode stores all values
 type leafNode struct {
-	Key string
+	// Key string
 	Val interface{}
 }
 
@@ -82,11 +82,6 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 		if offset == -1 {
 			// this is impossible
 			panic(fmt.Sprintf("the first rune of %s and %s must be same", matchedNode.Prefix, key))
-			// n is not the first child in this level (because n.Idx != nil is checked above)
-			// and no other match will be found in this level
-			// return nil, false
-			// n = n.Next
-			// continue
 		} else if offset == len(matchedNode.Prefix)-1 && offset < len(key)-1 {
 			key = key[offset+1:]
 			node1 = matchedNode.Children
@@ -98,10 +93,10 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 	}
 }
 
-type searchProgress struct {
-	key string // the key to match, normally it is a suffix of original key
-	n   *node  // the node to check
-}
+// type searchProgress struct {
+// 	key string // the key to match, normally it is a suffix of original key
+// 	n   *node  // the node to check
+// }
 
 // GetAllMatches returns all prefix matches in the tree according to the key
 // if no match is found, it returns an empty slice
@@ -202,7 +197,6 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 		return T.updateLeafVal(T.root, "", val)
 	}
 
-	// n := T.root
 	pathSuffix := key
 	// node1 is the first node at this level
 	// matchedNode is the node which first rune matches to the first rune of key
@@ -216,7 +210,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 		matchedNode, ok = node1.Idx[rune1]
 		if !ok {
 			// no match in this level, insert a new node after the node1
-			newNode := newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
+			newNode := newNode(pathSuffix, nil, nil, &leafNode{Val: val})
 			newNode.Next = node1.Next
 			node1.Next = newNode
 			node1.Idx[rune1] = newNode
@@ -226,15 +220,8 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 
 		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
 		if offset == -1 {
-			// no match at this level
 			// this is impossible
 			panic(fmt.Sprintf("the first rune of %s and %s must be same", matchedNode.Prefix, key))
-			// newNode := newNode(pathSuffix, nil, nil, &leafNode{Key: key, Val: val})
-			// newNode.Next = node1.Next
-			// node1.Next = newNode
-			// node1.Idx[rune1] = newNode
-			// T.size++
-			// return nil, true
 		} else if offset < len(matchedNode.Prefix)-1 {
 			// partial matched to matchedNode.Prefix
 			childNode, ok := split(matchedNode, offset+1)
@@ -244,14 +231,14 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			// pathSuffix is longer, add the node as child's sibling
 			if offset < len(pathSuffix)-1 {
 				newNodePrefix := pathSuffix[offset+1:]
-				childNode.Next = newNode(newNodePrefix, nil, nil, &leafNode{Key: key, Val: val})
+				childNode.Next = newNode(newNodePrefix, nil, nil, &leafNode{Val: val})
 				childNode.Idx[[]rune(newNodePrefix)[0]] = childNode.Next
 				T.size++
 				return nil, true
 			}
 			// pathSuffix is same as n'prefix, update n's leaf
 			// matchedNode must have no leaf because it was just splitted
-			matchedNode.Leaf = &leafNode{Key: key, Val: val}
+			matchedNode.Leaf = &leafNode{Val: val}
 			T.size++
 			return nil, true
 		}
@@ -264,7 +251,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			}
 			// matchedNode has no children, add the first child with pathSuffix[offset+1:]
 			newNodePrefix := pathSuffix[offset+1:]
-			matchedNode.Children = newNode(newNodePrefix, nil, nil, &leafNode{Key: key, Val: val})
+			matchedNode.Children = newNode(newNodePrefix, nil, nil, &leafNode{Val: val})
 			matchedNode.Children.Idx = map[rune]*node{}
 			matchedNode.Children.Idx[[]rune(newNodePrefix)[0]] = matchedNode.Children
 			T.size++
@@ -281,7 +268,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 // *node n must exist or it will create a new node
 func (T *RTree) updateLeafVal(n *node, key string, newVal interface{}) (interface{}, bool) {
 	if n.Leaf == nil {
-		n.Leaf = &leafNode{Key: key, Val: newVal}
+		n.Leaf = &leafNode{Val: newVal}
 		T.size++
 		return nil, true
 	}
