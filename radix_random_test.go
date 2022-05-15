@@ -56,6 +56,14 @@ func randomTest(t *testing.T) {
 			printMap(dict)
 			t.Fatalf("Tree is not identical to Map, seed: %d", *seed)
 		}
+		if tree.Size() != len(dict) {
+			t.Fatalf(
+				"incorrect size: got(%d) expected(%d) (seed: %d)",
+				tree.Size(),
+				len(dict),
+				*seed,
+			)
+		}
 	}
 }
 
