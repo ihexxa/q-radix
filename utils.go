@@ -70,7 +70,7 @@ func printNode(n *node) {
 		buf.WriteString(fmt.Sprintf("[next: %s] ", n.Next.Prefix))
 	}
 	if n.Leaf != nil {
-		buf.WriteString(fmt.Sprintf("[value(key): %s]", n.Leaf.Key))
+		buf.WriteString(fmt.Sprintf("[value(key): %s]", n.Leaf.Val))
 	}
 	if n.Idx != nil {
 		buf.WriteString("[idx:")
