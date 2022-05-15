@@ -54,7 +54,7 @@ func printRTree(T *RTree) {
 func printMap(M map[string]string) {
 	print("\nmap:")
 	for _, val := range M {
-		print(val)
+		print(fmt.Sprintf("(%s)", val))
 	}
 }
 
