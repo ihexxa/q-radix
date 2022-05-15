@@ -40,19 +40,19 @@ func print(msg string) {
 }
 
 func printActions(actions []string) {
-	print("\n\naction list:")
+	print("\naction list:")
 	for id, action := range actions {
 		print(fmt.Sprintf("action%d: %s", id, action))
 	}
 }
 
 func printRTree(T *RTree) {
-	print("\n\nrtree:")
+	print("\nrtree:")
 	BFS(T, printNode)
 }
 
 func printMap(M map[string]string) {
-	print("\n\nmap:")
+	print("\nmap:")
 	for _, val := range M {
 		print(val)
 	}
