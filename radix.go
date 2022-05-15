@@ -1,6 +1,9 @@
 package qradix
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 var errImpossible = func(prefix1, prefix2 string) string {
 	return fmt.Sprintf("the first rune of %s and %s must be same", prefix1, prefix2)
@@ -34,6 +37,7 @@ func newNode(prefix string, children *node, next *node, leaf *leafNode) *node {
 type RTree struct {
 	root *node
 	size int
+	m    *sync.RWMutex
 }
 
 // return common prefix's offset of s1 and s2, in byte
@@ -55,17 +59,25 @@ func commonPrefixOffset(s1, s2 string) int {
 
 // NewRTree returns a new radix tree
 func NewRTree() *RTree {
-	return &RTree{root: &node{Idx: map[rune]*node{}}}
+	return &RTree{
+		root: &node{Idx: map[rune]*node{}},
+		m:    &sync.RWMutex{},
+	}
 }
 
 // Size returns the size of the tree
 func (T *RTree) Size() int {
+	T.m.RLock()
+	defer T.m.RUnlock()
 	return T.size
 }
 
 // Get returns a value according to the key
 // if the key does not exist, it returns (nil, false)
 func (T *RTree) Get(key string) (interface{}, bool) {
+	T.m.RLock()
+	defer T.m.RUnlock()
+
 	if len(key) == 0 {
 		if T.root.Leaf != nil {
 			return T.root.Leaf.Val, true
@@ -130,6 +142,9 @@ func split(n *node, offset int) (*node, bool) {
 // Insert adds a value in the tree. Then the value can be found by the key.
 // if path already exists, it updates the value and returns the former value.
 func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
+	T.m.Lock()
+	defer T.m.Unlock()
+
 	if T.root == nil {
 		return nil, false
 	}
@@ -241,6 +256,9 @@ func merge(parent *node, child *node) bool {
 // if the leaf node exists, it will be deleted and "true" will be returned.
 // or "false" will be returned.
 func (T *RTree) Remove(key string) bool {
+	T.m.Lock()
+	defer T.m.Unlock()
+
 	if len(key) == 0 {
 		if T.root.Leaf != nil {
 			T.root.Leaf = nil
@@ -343,6 +361,9 @@ func getRune1(key string) rune {
 // GetAllPrefixMatches returns all prefix matches in the tree according to the key
 // if no match is found, it returns an empty map
 func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
+	T.m.RLock()
+	defer T.m.RUnlock()
+
 	resultMap := map[string]interface{}{}
 	if T.root.Leaf != nil {
 		resultMap[""] = T.root.Leaf.Val
@@ -394,6 +415,9 @@ func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
 // GetBestMatch returns the longest match in the tree according to the key
 // if there is no match, it returns empty string, nil and false
 func (T *RTree) GetBestMatch(key string) (string, interface{}, bool) {
+	T.m.RLock()
+	defer T.m.RUnlock()
+
 	matches := T.GetAllPrefixMatches(key)
 	if len(matches) == 0 {
 		return "", nil, false
