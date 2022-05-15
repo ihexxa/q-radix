@@ -1,13 +1,20 @@
 package qradix
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 )
 
-var errImpossible = func(prefix1, prefix2 string) string {
-	return fmt.Sprintf("the first rune of %s and %s must be same", prefix1, prefix2)
-}
+var (
+	ErrEmptyKey     = errors.New("empty key is not allowed")
+	ErrNotExist     = errors.New("key not exist")
+	ErrInvalidSplit = errors.New("invalid split")
+	errImpossible   = func(prefix1, prefix2 string) string {
+		return fmt.Sprintf("the first rune of %s and %s must be same", prefix1, prefix2)
+	}
+)
 
 // node is a node of radix tree and it is not a leaf
 type node struct {
@@ -60,7 +67,7 @@ func commonPrefixOffset(s1, s2 string) int {
 // NewRTree returns a new radix tree
 func NewRTree() *RTree {
 	return &RTree{
-		root: &node{Idx: map[rune]*node{}},
+		root: nil,
 		m:    &sync.RWMutex{},
 	}
 }
@@ -74,15 +81,12 @@ func (T *RTree) Size() int {
 
 // Get returns a value according to the key
 // if the key does not exist, it returns (nil, false)
-func (T *RTree) Get(key string) (interface{}, bool) {
+func (T *RTree) Get(key string) (interface{}, error) {
 	T.m.RLock()
 	defer T.m.RUnlock()
 
 	if len(key) == 0 {
-		if T.root.Leaf != nil {
-			return T.root.Leaf.Val, true
-		}
-		return nil, false
+		return nil, ErrEmptyKey
 	}
 
 	var ok bool
@@ -91,7 +95,7 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 	node1 := T.root
 	for {
 		if node1 == nil {
-			return nil, false
+			return nil, ErrNotExist
 		}
 
 		// try to find the matched node in this level
@@ -99,7 +103,7 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 		rune1 = []rune(key)[0]
 		matchedNode, ok = node1.Idx[rune1]
 		if !ok {
-			return nil, false
+			return nil, ErrNotExist
 		}
 
 		offset := commonPrefixOffset(matchedNode.Prefix, key)
@@ -113,9 +117,9 @@ func (T *RTree) Get(key string) (interface{}, bool) {
 		} else if offset == len(matchedNode.Prefix)-1 &&
 			offset == len(key)-1 &&
 			matchedNode.Leaf != nil {
-			return matchedNode.Leaf.Val, true
+			return matchedNode.Leaf.Val, nil
 		}
-		return nil, false
+		return nil, ErrNotExist
 	}
 }
 
@@ -141,15 +145,22 @@ func split(n *node, offset int) (*node, bool) {
 
 // Insert adds a value in the tree. Then the value can be found by the key.
 // if path already exists, it updates the value and returns the former value.
-func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
+func (T *RTree) Insert(key string, val interface{}) (interface{}, error) {
 	T.m.Lock()
 	defer T.m.Unlock()
 
-	if T.root == nil {
-		return nil, false
-	}
 	if len(key) == 0 {
-		return T.updateLeafVal(T.root, "", val)
+		return nil, ErrEmptyKey
+	}
+	if T.root == nil {
+		T.root = &node{
+			Prefix: key,
+			Leaf:   &leafNode{Val: val},
+			Idx:    map[rune]*node{},
+		}
+		T.root.Idx[getRune1(key)] = T.root
+		T.size = 1
+		return nil, nil
 	}
 
 	pathSuffix := key
@@ -171,7 +182,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			node1.Next = newNode
 			node1.Idx[rune1] = newNode
 			T.size++
-			return nil, true
+			return nil, nil
 		}
 
 		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
@@ -183,7 +194,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			// partial matched to matchedNode.Prefix
 			childNode, ok := split(matchedNode, offset+1)
 			if !ok {
-				return nil, false
+				return nil, ErrInvalidSplit
 			}
 			// pathSuffix is longer, add the node as child's sibling
 			if offset < len(pathSuffix)-1 {
@@ -191,13 +202,13 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 				childNode.Next = newNode(newNodePrefix, nil, nil, &leafNode{Val: val})
 				childNode.Idx[[]rune(newNodePrefix)[0]] = childNode.Next
 				T.size++
-				return nil, true
+				return nil, nil
 			}
 			// pathSuffix is same as n'prefix, update n's leaf
 			// matchedNode must have no leaf because it was just splitted
 			matchedNode.Leaf = &leafNode{Val: val}
 			T.size++
-			return nil, true
+			return nil, nil
 		}
 		if offset < len(pathSuffix)-1 {
 			// search children for left pathSuffix
@@ -212,7 +223,7 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 			matchedNode.Children.Idx = map[rune]*node{}
 			matchedNode.Children.Idx[[]rune(newNodePrefix)[0]] = matchedNode.Children
 			T.size++
-			return nil, true
+			return nil, nil
 		}
 
 		// update current node's leaf
@@ -223,16 +234,16 @@ func (T *RTree) Insert(key string, val interface{}) (interface{}, bool) {
 // updateLeafVal updates fields of a leafNode
 // if node has no leaf, a new leafNode will be assigned to the node
 // *node n must exist or it will create a new node
-func (T *RTree) updateLeafVal(n *node, key string, newVal interface{}) (interface{}, bool) {
+func (T *RTree) updateLeafVal(n *node, key string, newVal interface{}) (interface{}, error) {
 	if n.Leaf == nil {
 		n.Leaf = &leafNode{Val: newVal}
 		T.size++
-		return nil, true
+		return nil, nil
 	}
 
 	oldVal := n.Leaf.Val
 	n.Leaf.Val = newVal
-	return oldVal, true
+	return oldVal, nil
 }
 
 // merge merges parent node and parent's first child node
@@ -260,11 +271,6 @@ func (T *RTree) Remove(key string) bool {
 	defer T.m.Unlock()
 
 	if len(key) == 0 {
-		if T.root.Leaf != nil {
-			T.root.Leaf = nil
-			T.size--
-			return true
-		}
 		return false
 	}
 
@@ -299,14 +305,14 @@ func (T *RTree) Remove(key string) bool {
 		} else if offset == len(matchedNode.Prefix)-1 &&
 			offset == len(pathSuffix)-1 &&
 			matchedNode.Leaf != nil {
-			return T.removeChild(parent, matchedNode)
+			return T.removeChild(parent, matchedNode, parent == node1)
 		}
 		return false
 	}
 }
 
 // removeChild deletes child node from Tree T
-func (T *RTree) removeChild(parent *node, child *node) bool {
+func (T *RTree) removeChild(parent *node, child *node, isParentSameLevel bool) bool {
 	if child == nil {
 		return false
 	}
@@ -324,7 +330,7 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	// child is the first child
 	// and it has no child， delete child
 	if parent.Children == child {
-		delete(child.Idx, []rune(child.Prefix)[0])
+		delete(child.Idx, getRune1(child.Prefix))
 		if child.Next != nil {
 			child.Next.Idx = child.Idx
 		}
@@ -334,10 +340,18 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 	// child is not the first child
 	// search for the previous node of child
 	previousChild := parent.Children
-	if parent == T.root {
-		// when parent is T.root
-		// it means parent and parent.Children are in the same level
-		previousChild = T.root
+	if isParentSameLevel {
+		if parent == child {
+			// delete the first node at the first level
+			if parent.Next != nil {
+				delete(parent.Idx, getRune1(parent.Prefix))
+				parent.Next.Idx = parent.Idx
+			}
+			T.root = parent.Next
+			return true
+		} else {
+			previousChild = parent
+		}
 	}
 	delete(previousChild.Idx, []rune(child.Prefix)[0])
 
@@ -345,7 +359,7 @@ func (T *RTree) removeChild(parent *node, child *node) bool {
 		previousChild = previousChild.Next
 	}
 	if previousChild == nil {
-		panic("the previousChild not found")
+		panic(fmt.Sprintf("the previousChild not found parent(%+v) previous(%+v) child(%+v)", parent, previousChild, child))
 	}
 	previousChild.Next = previousChild.Next.Next
 	// merge will try to merge parent
@@ -365,10 +379,9 @@ func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
 	defer T.m.RUnlock()
 
 	resultMap := map[string]interface{}{}
-	if T.root.Leaf != nil {
-		resultMap[""] = T.root.Leaf.Val
-	}
-	if len(key) == 0 {
+	if T.root == nil {
+		return resultMap
+	} else if len(key) == 0 {
 		return resultMap
 	}
 
@@ -429,4 +442,141 @@ func (T *RTree) GetBestMatch(key string) (string, interface{}, bool) {
 		}
 	}
 	return bestPrefix, matches[bestPrefix], true
+}
+
+type visitLog struct {
+	visited bool // if the node's value is already logged
+	node    *node
+	indents int // current indents
+}
+
+func intoRow(indents int, prefix, value string) string {
+	return fmt.Sprintf(
+		"%s%s\t\t%s",
+		strings.Repeat("\t", indents),
+		strings.ReplaceAll(prefix, "\t", "+\t"),
+		strings.ReplaceAll(value, "\t", "+\t"),
+	)
+}
+
+func fromRow(row string) (int, string, string) {
+	indents := 0
+	runes := []rune(row)
+	for i, r := range runes {
+		if string(r) != "\t" {
+			indents = i
+			break
+		}
+	}
+
+	sepPos := 0
+	keyAndValue := runes[indents:]
+	for i := 0; i < len(keyAndValue)-1; i++ {
+		if string(keyAndValue[i]) == "\t" && string(keyAndValue[i+1]) == "\t" {
+			sepPos = i
+			break
+		}
+	}
+
+	return indents,
+		strings.ReplaceAll(string(keyAndValue[:sepPos]), "+\t", "\t"),
+		strings.ReplaceAll(string(keyAndValue[sepPos+2:]), "+\t", "\t")
+}
+
+func (T *RTree) String() chan string {
+	results := make(chan string, 512)
+	if T.root == nil {
+		close(results)
+		return results
+	}
+
+	stack := make([]*visitLog, 0)
+	stack = append(stack, &visitLog{
+		node:    T.root,
+		visited: false,
+		indents: 0,
+	})
+
+	worker := func() {
+		defer close(results)
+
+		for len(stack) > 0 {
+			vlog := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			if !vlog.visited {
+				// prefix is always logged (for restoring) even there is no leaf
+				value := ""
+				if vlog.node.Leaf != nil {
+					value = vlog.node.Leaf.Val.(string) // or it will panic
+				}
+				results <- intoRow(
+					vlog.indents,
+					vlog.node.Prefix,
+					value,
+				)
+
+				if vlog.node.Children != nil {
+					// push vlog back
+					vlog.visited = true
+					stack = append(stack, vlog)
+
+					// push the first child
+					stack = append(stack, &visitLog{
+						node:    vlog.node.Children,
+						visited: false,
+						indents: vlog.indents + 1,
+					})
+
+					continue
+				}
+			}
+			if vlog.node.Next != nil {
+				stack = append(stack, &visitLog{
+					node:    vlog.node.Next,
+					visited: false,
+					indents: vlog.indents,
+				})
+			}
+		}
+	}
+	go worker()
+
+	return results
+}
+
+func (T *RTree) FromString(input chan string) error {
+	parentsStack := []string{}
+	for row := range input {
+		indents, prefix, val := fromRow(row)
+
+		if len(parentsStack) > 0 {
+			if len(parentsStack) == indents {
+				// previous row is the parent of this node,
+				parentsStack = append(parentsStack, prefix)
+			} else if len(parentsStack) > indents {
+				// previous row is child of a row above
+				parentsStack = parentsStack[:indents]
+				parentsStack = append(parentsStack, prefix)
+			} else {
+				return fmt.Errorf("invalid indent previous(%d) current(%d)", len(parentsStack), indents)
+			}
+		} else {
+			if indents > 0 {
+				return fmt.Errorf("invalid indent previous(0) current(%d)", indents)
+			} else {
+				parentsStack = append(parentsStack, prefix)
+			}
+		}
+
+		fullPrefix := strings.Join(parentsStack, "")
+		if val != "" {
+			_, err := T.Insert(fullPrefix, val)
+			if err != nil {
+				return fmt.Errorf("inserting error: %w", err)
+			}
+		}
+	}
+
+	return nil
 }

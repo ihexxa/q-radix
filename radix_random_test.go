@@ -57,6 +57,9 @@ func randomTest(t *testing.T) {
 			t.Fatalf("Tree is not identical to Map, seed: %d", *seed)
 		}
 		if tree.Size() != len(dict) {
+			printActions(actions)
+			printRTree(tree)
+			printMap(dict)
 			t.Fatalf(
 				"incorrect size: got(%d) expected(%d) (seed: %d)",
 				tree.Size(),
@@ -71,6 +74,46 @@ func randomTest(t *testing.T) {
 			printRTree(tree)
 			printMap(dict)
 			t.Fatalf("incorrect prefix matches")
+		}
+
+		// test marshaling
+		tree2 := NewRTree()
+		rows := []string{}
+		for row := range tree.String() {
+			rows = append(rows, row)
+		}
+		// size of chan is known
+		inputChan := make(chan string, len(rows))
+		go func() {
+			for _, row := range rows {
+				inputChan <- row
+			}
+			close(inputChan)
+		}()
+		err := tree2.FromString(inputChan)
+		if err != nil {
+			printActions(actions)
+			printRTree(tree2)
+			fmt.Println("rows")
+			for _, row := range rows {
+				fmt.Println(row)
+			}
+			printMap(dict)
+			t.Fatal(err)
+		}
+		if !isEqual(tree2, dict) {
+			printActions(actions)
+			printRTree(tree2)
+			printMap(dict)
+			t.Fatalf("Tree2 is not identical to Map, seed: %d", *seed)
+		}
+		if tree2.Size() != len(dict) {
+			t.Fatalf(
+				"incorrect tree2 size: got(%d) expected(%d) (seed: %d)",
+				tree2.Size(),
+				len(dict),
+				*seed,
+			)
 		}
 	}
 }
@@ -130,7 +173,7 @@ func AppendRandomString(str *[]rune) {
 	charNum := 26
 
 	// generate random string
-	length := rand.Intn(*maxLen)
+	length := rand.Intn(*maxLen) + 1 // empty string is not allowed
 	for i := 0; i < length; i++ {
 		c := rune(int('a') + rand.Intn(charNum))
 		*str = append(*str, c)
@@ -155,16 +198,16 @@ func doRandomAction(actions *[]string, key string, tree *RTree, dict map[string]
 		if dict != nil {
 			delete(dict, key)
 		}
-		*actions = append(*actions, fmt.Sprintf("%s %s", removeAction, key))
+		*actions = append(*actions, fmt.Sprintf("%s (%s)", removeAction, key))
 	}
 }
 
 func isEqual(tree *RTree, dict map[string]string) bool {
 	// check if all keys in map are also in radix tree
 	for key := range dict {
-		_, ok := tree.Get(key)
-		if !ok {
-			fmt.Println("not matched key", key)
+		_, err := tree.Get(key)
+		if err != nil {
+			fmt.Printf("get key(%s) should be ok (%s)\n", key, err)
 			return false
 		}
 	}

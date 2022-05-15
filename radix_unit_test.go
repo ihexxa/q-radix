@@ -23,8 +23,8 @@ func testInsert(t *testing.T) {
 
 	for _, testCase := range cases {
 		rTree.Insert(testCase[0], testCase[0])
-		if _, ok := rTree.Get(testCase[1]); !ok {
-			t.Errorf("the insert key [%s] is not found", testCase[1])
+		if _, err := rTree.Get(testCase[1]); err != nil {
+			t.Errorf("the insert key [%s] is not found: %s", testCase[1], err)
 		}
 	}
 	if rTree.Size() != len(cases) {
