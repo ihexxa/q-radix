@@ -72,6 +72,13 @@ func printNode(n *node) {
 	if n.Leaf != nil {
 		buf.WriteString(fmt.Sprintf("[value(key): %s]", n.Leaf.Key))
 	}
+	if n.Idx != nil {
+		buf.WriteString("[idx:")
+		for rune1, node := range n.Idx {
+			buf.WriteString(fmt.Sprintf("(%s->%s)", string(rune1), node.Prefix))
+		}
+		buf.WriteString("]")
+	}
 
 	print(buf.String())
 }
