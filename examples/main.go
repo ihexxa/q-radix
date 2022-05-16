@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	qradix "github.com/ihexxa/q-radix"
+	qradix "github.com/ihexxa/q-radix/v3"
 )
 
 func main() {

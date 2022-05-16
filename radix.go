@@ -52,7 +52,11 @@ type RTree struct {
 func commonPrefixOffset(s1, s2 string) int {
 	i := 0
 	runes1, runes2 := []rune(s1), []rune(s2)
-	for ; i < len(runes1) && i < len(runes2); i++ {
+	length := len(runes1)
+	if len(runes2) < length {
+		length = len(runes2)
+	}
+	for ; i < length; i++ {
 		if runes1[i] != runes2[i] {
 			break
 		}
