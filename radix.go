@@ -483,6 +483,8 @@ func fromRow(row string) (int, string, string) {
 		strings.ReplaceAll(string(keyAndValue[sepPos+2:]), "+\t", "\t")
 }
 
+// String serializes nodes one by one and sends them to channel in order.
+// NOTICE: only string value is supported, or it will panic.
 func (T *RTree) String() chan string {
 	results := make(chan string, 512)
 	if T.root == nil {
@@ -545,6 +547,10 @@ func (T *RTree) String() chan string {
 	return results
 }
 
+// FromString gets rows(nodes) from channel in order and add them to tree one by one.
+// NOTICE:
+// 1. only string value is supported, or it will panic.
+// 2. The order of rows must be exactly same as String()'s output.
 func (T *RTree) FromString(input chan string) error {
 	parentsStack := []string{}
 	for row := range input {
