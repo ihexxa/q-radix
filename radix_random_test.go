@@ -236,7 +236,7 @@ func preOrderAndCompare(n *node, M map[string]string) bool {
 
 	if !leaf || !child || !next {
 		print("false node")
-		printNode(n)
+		PrintNode(n)
 		print(fmt.Sprintf("%t %t %t", leaf, child, next))
 	}
 
