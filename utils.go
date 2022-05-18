@@ -11,25 +11,35 @@ var (
 	debug = flag.Bool("d", false, "print debug messages")
 )
 
-// BFS is breadth first traverse on the radix tree
-func BFS(T *RTree, function func(*node)) {
-	Q := make([]*node, 0)
-	Q = append(Q, T.root)
+type Node interface {
+	Segment() string
+	FirstChild() (Node, bool)
+	NextNode() (Node, bool)
+	Value() (interface{}, bool)
+	Extra() (interface{}, bool)
+}
 
+// BFS is breadth first traverse on the radix tree
+func BFS(T *RTree, apply func(Node)) {
+	Q := make([]Node, 0)
+	if T.root == nil {
+		return
+	}
+
+	Q = append(Q, T.root)
 	for len(Q) > 0 {
 		n := Q[0]
 		Q = Q[1:]
 
-		if n == nil {
-			continue
+		firstChild, ok := n.FirstChild()
+		if ok {
+			Q = append(Q, firstChild)
 		}
-		if n.Children != nil {
-			Q = append(Q, n.Children)
+		nextNode, ok := n.NextNode()
+		if ok {
+			Q = append(Q, nextNode)
 		}
-		if n.Next != nil {
-			Q = append(Q, n.Next)
-		}
-		function(n)
+		apply(n)
 	}
 }
 
@@ -48,7 +58,7 @@ func printActions(actions []string) {
 
 func printRTree(T *RTree) {
 	print("\nrtree:")
-	BFS(T, printNode)
+	BFS(T, PrintNode)
 }
 
 func printMap(M map[string]string) {
@@ -58,27 +68,32 @@ func printMap(M map[string]string) {
 	}
 }
 
-// printNode prints all members of a node
-func printNode(n *node) {
+// PrintNode prints node's fields
+func PrintNode(n Node) {
 	var buf bytes.Buffer
 
-	buf.WriteString(fmt.Sprintf("[prefix: %s] ", n.Prefix))
-	if n.Children != nil {
-		buf.WriteString(fmt.Sprintf("[child: %s] ", n.Children.Prefix))
+	buf.WriteString(fmt.Sprintf("[prefix: %s] ", n.Segment()))
+	firstChild, ok := n.FirstChild()
+	if ok {
+		buf.WriteString(fmt.Sprintf("[child: %s] ", firstChild.Segment()))
 	}
-	if n.Next != nil {
-		buf.WriteString(fmt.Sprintf("[next: %s] ", n.Next.Prefix))
+	nextNode, ok := n.NextNode()
+	if ok {
+		buf.WriteString(fmt.Sprintf("[next: %s] ", nextNode.Segment()))
 	}
-	if n.Leaf != nil {
-		buf.WriteString(fmt.Sprintf("[value(key): %s]", n.Leaf.Val))
+	value, ok := n.Value()
+	if ok {
+		buf.WriteString(fmt.Sprintf("[value(key): %s]", value))
 	}
-	if n.Idx != nil {
+	extra, ok := n.Extra()
+	if ok {
 		buf.WriteString("[idx:")
-		for rune1, node := range n.Idx {
-			buf.WriteString(fmt.Sprintf("(%s->%s)", string(rune1), node.Prefix))
+		idx := extra.(map[rune]*node)
+		for rune1, node := range idx {
+			buf.WriteString(fmt.Sprintf("(%s->%s)", string(rune1), node.Segment()))
 		}
 		buf.WriteString("]")
 	}
 
-	print(buf.String())
+	fmt.Println(buf.String())
 }

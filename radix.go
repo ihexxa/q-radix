@@ -26,6 +26,31 @@ type node struct {
 	Idx map[rune]*node
 }
 
+// Segment returns node's segment
+func (n *node) Segment() string {
+	return n.Prefix
+}
+
+// FirstChild returns node's first child, it returns nil if there is no
+func (n *node) FirstChild() (Node, bool) {
+	return n.Children, n.Children != nil
+}
+
+// NextNode returns node's next node, it returns nil if there is no
+func (n *node) NextNode() (Node, bool) {
+	return n.Next, n.Next != nil
+}
+
+// Value returns node's value, it returns nil if there is no
+func (n *node) Value() (interface{}, bool) {
+	return n.Leaf.Val, n.Leaf != nil
+}
+
+// Extra returns node's Extra Info
+func (n *node) Extra() (interface{}, bool) {
+	return n.Idx, n.Idx != nil
+}
+
 // leafNode stores all values
 type leafNode struct {
 	Val interface{}
