@@ -1,8 +1,8 @@
 # q-radix
 
 [![Build Status](https://travis-ci.org/ihexxa/q-radix.svg?branch=master)](https://travis-ci.org/ihexxa/q-radix)
-[![Go Report](https://goreportcard.com/badge/github.com/ihexxa/q-radix)](https://goreportcard.com/report/github.com/ihexxa/q-radix)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/ihexxa/q-radix)](https://pkg.go.dev/github.com/ihexxa/q-radix)
+[![Go Report](https://goreportcard.com/badge/github.com/ihexxa/q-radix/v3)](https://goreportcard.com/badge/github.com/ihexxa/q-radix/v3)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/ihexxa/q-radix/v3)](https://pkg.go.dev/github.com/ihexxa/q-radix/v3)
 
 _A simple and serializable radix tree implementation in Go/Golang._
 
