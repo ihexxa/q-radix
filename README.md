@@ -10,6 +10,7 @@ _A simple and serializable radix tree implementation in Go/Golang._
 
 - Simple APIs: Insert, Get, Remove, GetAllPrefixMatches, GetBestMatch.
 - Serializable: String() method is supported, then it can be persisted.
+- UTF-8 support: support different characters as keys
 - Well tested: it is covered by unit tests and random tests.
 - Good performance: [benchmark](https://github.com/ihexxa/radix-bench).
 
@@ -63,6 +64,29 @@ func main() {
 
 	// get the size of the radix tree
 	fmt.Println(rTree.Size())
-}
 
+	// traverse the tree
+	rTree.Insert("he", "v1")
+	rTree.Insert("hello", "v2")
+	rTree.Insert("hello世界", "v3")
+	qradix.BFS(rTree, qradix.PrintNode)
+
+	// serialize tree into rows!
+	rows := []string{}
+	for row := range rTree.String() {
+		rows = append(rows, row)
+	}
+
+	// restore a new tree from rows!
+	rTree2 := qradix.NewRTree()
+	rowChan := make(chan string, len(rows))
+	go func() {
+		for _, row := range rows {
+			rowChan <- row
+		}
+		close(rowChan)
+	}()
+	rTree2.FromString(rowChan)
+	qradix.BFS(rTree2, qradix.PrintNode)
+}
 ```
