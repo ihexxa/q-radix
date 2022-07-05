@@ -43,7 +43,10 @@ func (n *node) NextNode() (Node, bool) {
 
 // Value returns node's value, it returns nil if there is no
 func (n *node) Value() (interface{}, bool) {
-	return n.Leaf.Val, n.Leaf != nil
+	if n.Leaf != nil {
+		return n.Leaf.Val, true
+	}
+	return nil, false
 }
 
 // Extra returns node's Extra Info
@@ -73,7 +76,7 @@ type RTree struct {
 }
 
 // return common prefix's offset of s1 and s2, in byte
-// s1[:offset] == s2[:offset]
+// s1[:offset+1] == s2[:offset+1]
 func commonPrefixOffset(s1, s2 string) int {
 	i := 0
 	runes1, runes2 := []rune(s1), []rune(s2)
@@ -454,7 +457,96 @@ func (T *RTree) GetAllPrefixMatches(key string) map[string]interface{} {
 	return resultMap
 }
 
-// GetBestMatch returns the longest match in the tree according to the key
+type traverseLog struct {
+	n    *node
+	base string
+}
+
+// GetLongerMatches returns at most `limmit` matches which are longer than the key
+// if no match is found, it returns an empty map
+func (T *RTree) GetLongerMatches(key string, limit int) map[string]interface{} {
+	T.m.RLock()
+	defer T.m.RUnlock()
+
+	resultMap := map[string]interface{}{}
+	if T.root == nil {
+		return resultMap
+	} else if len(key) == 0 {
+		return resultMap
+	}
+
+	var ok bool
+	var rune1 rune
+	var matchedNode *node
+	node1 := T.root
+	pathSuffix := key
+	baseOffset := 0 // key[:baseOffset] is matched
+	for {
+		if node1 == nil {
+			return resultMap
+		}
+
+		rune1 = getRune1(pathSuffix)
+		matchedNode, ok = node1.Idx[rune1]
+		if !ok {
+			return resultMap
+		}
+
+		offset := commonPrefixOffset(matchedNode.Prefix, pathSuffix)
+		if offset == -1 {
+			// this is impossible
+			panic(errImpossible(matchedNode.Prefix, key))
+		} else if offset == len(matchedNode.Prefix)-1 && offset < len(pathSuffix)-1 {
+			pathSuffix = pathSuffix[offset+1:]
+			node1 = matchedNode.Children
+			baseOffset += offset + 1
+			continue
+		} else if offset == len(pathSuffix)-1 {
+			break
+		}
+		return resultMap
+	}
+
+	if matchedNode.Leaf != nil {
+		resultMap[key[:baseOffset]+matchedNode.Prefix] = matchedNode.Leaf.Val
+	}
+	// start from next level becasue matchedNode's siblings are not results
+	// traverse from the matchedNode and return values
+	queue := []*traverseLog{&traverseLog{
+		n:    matchedNode.Children,
+		base: key[:baseOffset] + matchedNode.Prefix,
+	}}
+	for len(queue) > 0 {
+		tlog := queue[0]
+		queue = queue[1:]
+		if tlog.n == nil {
+			continue
+		}
+
+		if tlog.n.Leaf != nil {
+			resultMap[tlog.base+tlog.n.Prefix] = tlog.n.Leaf.Val
+			if len(resultMap) > limit {
+				break
+			}
+		}
+		if tlog.n.Next != nil {
+			queue = append(queue, &traverseLog{
+				n:    tlog.n.Next,
+				base: tlog.base,
+			})
+		}
+		if tlog.n.Children != nil {
+			queue = append(queue, &traverseLog{
+				n:    tlog.n.Children,
+				base: tlog.base + tlog.n.Prefix,
+			})
+		}
+	}
+
+	return resultMap
+}
+
+// GetBestMatch returns the longest match from all existings values which key is short than the input key
 // if there is no match, it returns empty string, nil and false
 func (T *RTree) GetBestMatch(key string) (string, interface{}, bool) {
 	T.m.RLock()

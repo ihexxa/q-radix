@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,7 +15,7 @@ const (
 )
 
 var (
-	// use -args to input these options: "go test -args -d=true"
+	// use -args to input these options: "go test -args -h=10"
 	actionCount = flag.Int("c", 30, "how many actions will be applied on RTree and map")
 	insertRatio = flag.Int("i", 60, "control the the ratio between insert action and remove action")
 	maxLen      = flag.Int("l", 5, "how long will random string be generated")
@@ -29,6 +30,7 @@ func TestWithRandomKeys(t *testing.T) {
 	seedRand()
 	for i := 0; i < *testRound; i++ {
 		randomTest(t)
+		longerKeyTest(t)
 	}
 }
 
@@ -118,6 +120,31 @@ func randomTest(t *testing.T) {
 	}
 }
 
+func longerKeyTest(t *testing.T) {
+	var actions []string
+	tree := NewRTree()
+	dict := make(map[string]string)
+	randomStrings := GetTestStrings()
+
+	for i := 0; i < *actionCount; i++ {
+		key := randomStrings[rand.Intn(len(randomStrings))]
+		doRandomAction(&actions, key, tree, dict)
+	}
+
+	randomKey := randomStrings[rand.Intn(len(randomStrings))]
+	end := rand.Intn(len(randomKey)) + 1
+	start := rand.Intn(end)
+	randomKey = randomKey[start:end]
+	longerMatches := tree.GetLongerMatches(randomKey, 5)
+	if !checkLongerMatches(randomKey, longerMatches) {
+		fmt.Printf("longerMatches of (%s): %+v\n", randomKey, longerMatches)
+		printActions(actions)
+		printRTree(tree)
+		printMap(dict)
+		t.Fatalf("incorrect longer matches")
+	}
+}
+
 func checkPrefixMatches(
 	key string,
 	prefixes map[string]interface{},
@@ -135,6 +162,23 @@ func checkPrefixMatches(
 			}
 		}
 	}
+	return true
+}
+
+// checkLongerMatches only checks if key is the prefix of each longerMatches
+// Becasue currently, besides the first one,
+// it doesn't return results by the order of how much it is closed to the key
+func checkLongerMatches(
+	key string,
+	longerMatches map[string]interface{},
+) bool {
+	for longerMatch := range longerMatches {
+		if !strings.HasPrefix(longerMatch, key) {
+			fmt.Printf("%s is not a prefix of %s \n", key, longerMatch)
+			return false
+		}
+	}
+
 	return true
 }
 
